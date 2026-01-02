@@ -1,0 +1,58 @@
+Checks: >
+  -*,
+  clang-analyzer-*,
+  bugprone-*,
+  cert-*,
+  cppcoreguidelines-*,
+  hicpp-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  portability-*,
+  misc-*
+  ,-modernize-use-trailing-return-type
+  ,-cppcoreguidelines-avoid-magic-numbers
+  ,-cppcoreguidelines-pro-bounds-array-to-pointer-decay
+  ,-cppcoreguidelines-pro-type-reinterpret-cast
+  ,-cppcoreguidelines-non-private-member-variables-in-classes
+  ,-hicpp-vararg
+  ,-misc-non-private-member-variables-in-classes
+  ,-readability-implicit-bool-conversion
+  ,-cppcoreguidelines-avoid-const-or-ref-data-members
+
+WarningsAsErrors: >
+  clang-analyzer-*,
+  bugprone-*,
+  cert-*
+
+FormatStyle: none
+ExtraArgs: ['-std=c++20']
+
+CheckOptions:
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.FunctionCase
+    value: camelBack
+  - key: readability-identifier-naming.MemberCase
+    value: camelBack
+  - key: readability-identifier-naming.PrivateMemberPrefix
+    value: m_
+
+  - key: readability-magic-numbers.IgnoredIntegerValues
+    value: '0,1,2,3,4,8,10,16,32,64'
+  - key: readability-magic-numbers.IgnoredFloatingPointValues
+    value: '0.0,1.0,0.5'
+
+  - key: modernize-loop-convert.MinConfidence
+    value: reasonable
+
+  - key: modernize-use-nullptr.NullMacros
+    value: 'NULL'
+
+  - key: modernize-use-emplace.ContainersWithPushBack
+    value: 'std::vector;std::deque;std::list'
+
+  - key: cppcoreguidelines-owning-memory.LegacyOwnedRawPtr
+    value: true

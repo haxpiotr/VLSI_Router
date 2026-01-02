@@ -1,0 +1,53 @@
+# --- CMake ---
+/out/
+/build/
+CMakeCache.txt
+CMakeFiles/
+CMakeSettings.json
+CMakePresets.json
+*.cmake
+install_manifest.txt
+
+# --- Visual Studio ---
+.vs/
+*.user
+*.sln
+*.vcxproj
+*.filters
+*.proto.res
+*.db
+*.opendb
+*.VC.db
+
+# --- Kompilaty i pliki binarne ---
+*.obj
+*.exe
+*.pdb
+*.lib
+*.dll
+*.exp
+*.ilk
+*.out
+*.bin
+
+# --- GTest i FetchContent (tymczasowe pobrane źródła) ---
+/_deps/
+/packages/
+/x64/
+
+# --- Logi i pliki tymczasowe ---
+*.log
+*.tlog
+*.lastbuildstate
+ipch/
+*.pch
+
+# --- OS / IDE ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# --- Backupy ---
+*.bak
+*.swp
