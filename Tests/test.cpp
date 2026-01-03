@@ -152,7 +152,7 @@ TEST(LefParser, ShouldParsePinsWithManyLAyers)
 TEST(LefParser, ShouldParseObs)
 {
 	in::lef::Loader loader;
-	const auto result = loader.get("iData/spd19_sample4.input.lef");
+	const auto result = loader.get("Data/ispd19_sample4.input.lef");
 	EXPECT_EQ(result.sites.size(), 3);
 	EXPECT_EQ(result.layers.size(), 18);
 	EXPECT_EQ(result.vias.size(), 67);
