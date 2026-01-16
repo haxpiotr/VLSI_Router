@@ -62,7 +62,7 @@ namespace in::lef
 			bp::lit("WIDTH") >> bp::double_ >>
 			bp::lit("SPACING") >> bp::double_;
 
-		auto const convex =
+		[[maybe_unused]]auto const convex =
 			bp::lit("CONVEXCORNER");
 
 		auto const grammar =
@@ -87,17 +87,18 @@ namespace in::lef
 
 	struct Layer
 	{
-		enum class Type
+		enum class Type : std::uint8_t
 		{
 			ROUTING,
 			CUT
 		};
 
-		enum class Direction
+		enum class Direction : std::uint8_t
 		{
 			HORIZONTAL,
 			VERTICAL
 		};
+
 		std::string name;
 		Type type{ Type::CUT };
 		Direction direction{ Direction::HORIZONTAL };
@@ -123,14 +124,14 @@ namespace in::lef
 
 	struct Pin
 	{
-		enum class Direction
+		enum class Direction : std::uint8_t
 		{
 			INPUT,
 			OUTPUT,
 			INOUT
 		};
 
-		enum class Shape
+		enum class Shape : std::uint8_t
 		{
 			NONE,
 			ABUTMENT,
@@ -138,7 +139,7 @@ namespace in::lef
 			FEEDTHRU
 		};
 
-		enum class Use
+		enum class Use : std::uint8_t
 		{
 			ANALOG,
 			GROUND,
@@ -182,16 +183,17 @@ namespace in::lef
 
 	struct Data
 	{
-		enum class ClearanceMeasure
+		enum class ClearanceMeasure : std::uint8_t
 		{
 			EUCLIDEAN,
 			MAXXY
 		};
-		enum class UseMinSpacing
+		enum class UseMinSpacing : std::uint8_t
 		{
 			ON,
 			OFF
 		};
+
 		double version{ 0 };
 		std::string busbitChars;
 		std::string dividerChar;

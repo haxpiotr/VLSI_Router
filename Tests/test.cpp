@@ -453,6 +453,27 @@ TEST(GlobalRouter, ShouldGetNetlist)
 	in::GlobalRouter GRouter(transformer, 100, 100);
 	const auto& expectedNetlist = GRouter.getNetlist();
 	EXPECT_EQ(expectedNetlist.size(), 3153);
+
+	const auto net1015it = std::ranges::find_if(expectedNetlist, [](const auto& net)
+	{
+		return net.first == "net1015";
+	});
+
+	const auto& net1015 = *net1015it;
+
+	for (const auto& coordinate : net1015.second)
+	{
+		std::cout << coordinate.first << " " << coordinate.second << std::endl;
+	}
+
+	const auto histogram = GRouter.getNetlistElementHistogram();
+
+	for (const auto& [key, count] : histogram)
+	{
+		std::cout << std::to_string(key) << ": " << std::to_string(count) << "\n";
+	}
+
+	std::cout << std::flush;
 }
 
 TEST(GlobalRouter, ShouldGetBigNetlist)
@@ -489,8 +510,8 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlist)
 	const auto indexNeighs = globalGrid.getNeighbours(index);
 	EXPECT_EQ(indexNeighs.size(), 2);
 
-	const auto itFirst = std::find(indexNeighs.begin(), indexNeighs.end(), 1);
-	const auto itSecond = std::find(indexNeighs.begin(), indexNeighs.end(), 100);
+	const auto itFirst = std::ranges::find(indexNeighs, 1);
+	const auto itSecond = std::ranges::find(indexNeighs, 100);
 	EXPECT_EQ(*itFirst, 1);
 	EXPECT_EQ(*itSecond, 100);
 	

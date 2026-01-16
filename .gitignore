@@ -1,6 +1,6 @@
 # --- CMake ---
 /out/
-/build/
+/build*
 CMakeCache.txt
 CMakeFiles/
 CMakeSettings.json
@@ -19,7 +19,6 @@ install_manifest.txt
 *.opendb
 *.VC.db
 
-# --- Kompilaty i pliki binarne ---
 *.obj
 *.exe
 *.pdb

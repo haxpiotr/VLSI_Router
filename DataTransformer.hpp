@@ -33,7 +33,8 @@ namespace in
 	{
 	public:
 		using Indices = std::vector<int>;
-		using Net = std::pair<std::string, std::vector<int>>;
+		using Coordinates = std::pair<int,int>;
+		using Net = std::pair<std::string, std::vector<Coordinates>>;
 		using Netlist = std::vector<Net>;
 		GlobalRoutingGrid() = default;
 		GlobalRoutingGrid(int cols,
@@ -45,6 +46,7 @@ namespace in
 		[[nodiscard]] size_t getCount() const;
 		[[nodiscard]] std::pair<int,int> getCellCapacity() const;
 		const std::vector<GlobalRoutingCell>& getGrid() const;
+		[[nodiscard]] std::pair<int,int> getCoordinates(point_int point) const;
 		[[nodiscard]] int getIndex(point_int point) const;
 		[[nodiscard]] std::vector<int> getNeighbours(int i) const;
 	private:

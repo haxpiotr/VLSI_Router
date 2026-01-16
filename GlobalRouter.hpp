@@ -17,13 +17,21 @@ public:
 	using Indices = GlobalRoutingGrid::Indices;
 	using Net = GlobalRoutingGrid::Net;
 	using Netlist = GlobalRoutingGrid::Netlist;
+	using Coord = GlobalRoutingGrid::Coordinates;
 
 	GlobalRouter(DataTransformer& dataTransformer, unsigned int cols, unsigned int rows);
 	~GlobalRouter() = default;
-	[[nodiscard]]const Netlist& getNetlist() const;
-	std::map<int, int> getNetlistElementHistogram() const;
+
+
+
+	[[nodiscard]] const Netlist& getNetlist() const;
+	[[nodiscard]] std::map<int, int> getNetlistElementHistogram() const;
 
 private:
+
+	std::vector<Coord> performUpperDogleg(const Net& net) const;
+	std::vector<Coord> performLowerDogleg(const Net& net) const;
+
 	DataTransformer& m_dataTransformer;
 	std::vector<Pin> m_placedPins;
 	GlobalRoutingGrid m_globalGrid;

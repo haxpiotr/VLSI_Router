@@ -34,10 +34,33 @@ namespace in
 		return hist;
 	}
 
-const GlobalRouter::Netlist& GlobalRouter::getNetlist() const
-{
-	return m_netlist;
-}
+	const GlobalRouter::Netlist& GlobalRouter::getNetlist() const
+	{
+			return m_netlist;
+	}
+
+	std::vector<GlobalRouter::Coord> GlobalRouter::performUpperDogleg(const Net& net) const
+	{
+		const auto& [start, end] = std::minmax(net.second[0],net.second[1]);
+		const auto verticalDistance = end.second - start.second;
+
+		[[maybe_unused]]const auto step = verticalDistance > 0 ? 1 : -1;
+
+		std::vector<Coord> path;
+
+		return path;
+	}
+	std::vector<GlobalRouter::Coord> GlobalRouter::performLowerDogleg(const Net& net) const
+	{
+		const auto& [start, end] = std::minmax(net.second[0],net.second[1]);
+		const auto verticalDistance = end.second - start.second;
+
+		[[maybe_unused]]const auto step = verticalDistance > 0 ? 1 : -1;
+
+		std::vector<Coord> path;
+
+		return path;
+	}
 
 }
 

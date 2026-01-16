@@ -71,14 +71,14 @@ namespace in::def
 		return std::filesystem::is_regular_file(lef);
 	}
 
-	int Loader::onDieArea(LefDefParser::defrCallbackType_e type, LefDefParser::defiBox* box, void* data)
+	int Loader::onDieArea([[maybe_unused]]LefDefParser::defrCallbackType_e type, LefDefParser::defiBox* box, [[maybe_unused]]void* data)
 	{
 		m_data.dieArea = { {box->xl(), box->yl()},{box->xh(), box->yh()} };
 
 		return 0;
 	}
 
-	int Loader::onTracks(LefDefParser::defrCallbackType_e type, LefDefParser::defiTrack* track, void* data)
+	int Loader::onTracks([[maybe_unused]]LefDefParser::defrCallbackType_e type, LefDefParser::defiTrack* track,[[maybe_unused]]void* data)
 	{
 		Tracks inTracks;
 		
@@ -98,7 +98,7 @@ namespace in::def
 		return 0;
 	}
 
-	int Loader::onGCellGrid(LefDefParser::defrCallbackType_e type, LefDefParser::defiGcellGrid* gcellgrid, void* data)
+	int Loader::onGCellGrid([[maybe_unused]]LefDefParser::defrCallbackType_e type, LefDefParser::defiGcellGrid* gcellgrid,[[maybe_unused]] void* data)
 	{
 		GCellGrid inGrid;
 
@@ -112,7 +112,7 @@ namespace in::def
 		return 0;
 	}
 
-	int Loader::onStartVia(LefDefParser::defrCallbackType_e type, int viaCount, void* data)
+	int Loader::onStartVia([[maybe_unused]]LefDefParser::defrCallbackType_e type, int viaCount,[[maybe_unused]] void* data)
 	{
 		m_data.viaCount = viaCount;
 
@@ -121,7 +121,7 @@ namespace in::def
 		return 0;
 	}
 
-	int Loader::onVia(LefDefParser::defrCallbackType_e type, LefDefParser::defiVia* via, void* data)
+	int Loader::onVia([[maybe_unused]]LefDefParser::defrCallbackType_e type, LefDefParser::defiVia* via,[[maybe_unused]] void* data)
 	{
 		Via inVia;
 
@@ -192,14 +192,14 @@ namespace in::def
 		return 0;
 	}
 
-	int Loader::onSpecialNetsNumber(LefDefParser::defrCallbackType_e type, int specialNetsCount, void* data)
+	int Loader::onSpecialNetsNumber([[maybe_unused]]LefDefParser::defrCallbackType_e type, int specialNetsCount, [[maybe_unused]]void* data)
 	{
 		m_data.specialNetsCount = specialNetsCount;
 
 		return 0;
 	}
 
-	int Loader::onComponentsNumber(LefDefParser::defrCallbackType_e type, int componentsCount, void* data)
+	int Loader::onComponentsNumber([[maybe_unused]]LefDefParser::defrCallbackType_e type, int componentsCount,[[maybe_unused]] void* data)
 	{
 		m_data.componentsCount = componentsCount;
 
@@ -208,7 +208,7 @@ namespace in::def
 		return 0;
 	}
 
-	int Loader::onComponent(LefDefParser::defrCallbackType_e type, LefDefParser::defiComponent* component, void* data)
+	int Loader::onComponent([[maybe_unused]]LefDefParser::defrCallbackType_e type, LefDefParser::defiComponent* component,[[maybe_unused]] void* data)
 	{
 		Component inComponent;
 
@@ -257,7 +257,7 @@ namespace in::def
 		return 0;
 	}
 
-	int Loader::onNet(LefDefParser::defrCallbackType_e type, LefDefParser::defiNet* net, void* data)
+	int Loader::onNet([[maybe_unused]]LefDefParser::defrCallbackType_e type, LefDefParser::defiNet* net, [[maybe_unused]]void* data)
 	{
 		Net inNet;
 
@@ -273,7 +273,7 @@ namespace in::def
 		return 0;
 	}
 
-	int Loader::onPin(LefDefParser::defrCallbackType_e type, LefDefParser::defiPin* pin, void* data)
+	int Loader::onPin([[maybe_unused]]LefDefParser::defrCallbackType_e type, LefDefParser::defiPin* pin, [[maybe_unused]]void* data)
 	{
 		Pin inPin;
 

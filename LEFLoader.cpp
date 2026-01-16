@@ -33,9 +33,7 @@ Data Loader::get(const std::filesystem::path& lef)
 		throw std::runtime_error(message);
 	}
 
-	const auto parseResult = LefDefParser::lefrRead(lefPtr, lef.string().c_str(), nullptr);
-
-	if (parseResult != 0)
+	if (const auto parseResult = LefDefParser::lefrRead(lefPtr, lef.string().c_str(), nullptr); parseResult != 0)
 	{
 		const std::string message = "Parsing: " + lef.string() + " failed";
 
@@ -74,7 +72,7 @@ bool Loader::verify(const std::filesystem::path& lef) const
 	return std::filesystem::is_regular_file(lef);
 }
 
-int Loader::onSite(LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiSite* site, void* data)
+int Loader::onSite([[maybe_unused]]LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiSite* site,[[maybe_unused]] void* data)
 {
 	Site inputSite;
 	inputSite.name = std::string{ site->name() };
@@ -92,28 +90,28 @@ int Loader::onSite(LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiSi
 	return 0;
 }
 
-int Loader::onVersion(LefDefParser::lefrCallbackType_e cbType, double version, void* data)
+int Loader::onVersion([[maybe_unused]]LefDefParser::lefrCallbackType_e cbType, double version,[[maybe_unused]] void* data)
 {
 	m_data.version = version;
 
 	return 0;
 }
 
-int Loader::onBusbit(LefDefParser::lefrCallbackType_e cbType, const char* str, void* data)
+int Loader::onBusbit([[maybe_unused]]LefDefParser::lefrCallbackType_e cbType, const char* str,[[maybe_unused]] void* data)
 {
 	m_data.busbitChars = str;
 
 	return 0;
 }
 
-int Loader::onDividerChar(LefDefParser::lefrCallbackType_e cbType, const char* str, void* data)
+int Loader::onDividerChar([[maybe_unused]]LefDefParser::lefrCallbackType_e cbType, const char* str,[[maybe_unused]] void* data)
 {
 	m_data.dividerChar = str;
 
 	return 0;
 }
 
-int Loader::onUnits(LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiUnits* units, void* data)
+int Loader::onUnits([[maybe_unused]]LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiUnits* units,[[maybe_unused]] void* data)
 {
 	if (units->hasDatabase())
 	{
@@ -123,21 +121,21 @@ int Loader::onUnits(LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiU
 	return 0;
 }
 
-int Loader::onManufacturingGrid(LefDefParser::lefrCallbackType_e cbType, double grid, void* data)
+int Loader::onManufacturingGrid([[maybe_unused]]LefDefParser::lefrCallbackType_e cbType, double grid, [[maybe_unused]]void* data)
 {
 	m_data.manufacturingGrid = grid;
 
 	return 0;
 }
 
-int Loader::onClearanceMeasure(LefDefParser::lefrCallbackType_e cbType, const char* str, void* data)
+int Loader::onClearanceMeasure([[maybe_unused]]LefDefParser::lefrCallbackType_e cbType, const char* str,[[maybe_unused]] void* data)
 {
 	m_data.clearanceMeasure = std::string{ str } == "EUCLIDEAN" ? in::lef::Data::ClearanceMeasure::EUCLIDEAN : in::lef::Data::ClearanceMeasure::MAXXY;
 
 	return 0;
 }
 
-int Loader::onUseMinSpacing(LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiUseMinSpacing* spacing, void* data)
+int Loader::onUseMinSpacing([[maybe_unused]]LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiUseMinSpacing* spacing,[[maybe_unused]] void* data)
 {
 	if (std::string{ spacing->name() } == "OBS")
 	{
@@ -147,7 +145,7 @@ int Loader::onUseMinSpacing(LefDefParser::lefrCallbackType_e cbType, LefDefParse
 	return 0;
 }
 
-int Loader::onLayer(LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiLayer* layer, void* data)
+int Loader::onLayer([[maybe_unused]]LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiLayer* layer,[[maybe_unused]] void* data)
 {
 	Layer inLayer;
 
@@ -260,7 +258,7 @@ int Loader::onLayer(LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiL
 	return 0;
 }
 
-int Loader::onVia(LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiVia* via, void* data)
+int Loader::onVia([[maybe_unused]]LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiVia* via,[[maybe_unused]] void* data)
 {
 	Via inVia;
 	inVia.name = via->name();
@@ -283,7 +281,7 @@ int Loader::onVia(LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiVia
 	return 0;
 }
 
-int Loader::onMacro(LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiMacro* macro, void* data)
+int Loader::onMacro([[maybe_unused]]LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiMacro* macro,[[maybe_unused]] void* data)
 {
 	Macro inMacro;
 	inMacro.name = macro->name();
@@ -326,7 +324,7 @@ int Loader::onMacro(LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiM
 	return 0;
 }
 
-int Loader::onPin(LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiPin* pin, void* data)
+int Loader::onPin([[maybe_unused]]LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiPin* pin,[[maybe_unused]] void* data)
 {
 	Pin inPin;
 	inPin.name = pin->name();
@@ -403,7 +401,7 @@ int Loader::onPin(LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiPin
 	return 0;
 }
 
-int Loader::onObstruction(LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiObstruction* obstr, void* data)
+int Loader::onObstruction([[maybe_unused]]LefDefParser::lefrCallbackType_e cbType, LefDefParser::lefiObstruction* obstr,[[maybe_unused]] void* data)
 {
 	const auto* obstrGeos = obstr->geometries();
 	

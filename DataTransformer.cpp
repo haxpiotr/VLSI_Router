@@ -55,7 +55,8 @@ namespace in
 		const auto orientation = designPin.orientation;
 
 		Pin placedPin;
-		placedPin.compIdPair = { "PIN",designPin.name };
+		const std::string placedPinName {"PIN"};
+		placedPin.compIdPair = { placedPinName, designPin.name };
 
 		switch (orientation)
 		{
@@ -226,7 +227,8 @@ namespace in
 			{
 				std::vector<box_int> rotatedBox;
 				rotatedBox.resize(geo.size());
-				std::transform(std::execution::unseq,geo.begin(), geo.end(), rotatedBox.begin(), [sizeX](const auto& in) -> box_int
+				std::transform(std::execution::unseq,geo.begin(), geo.end(), rotatedBox.begin(),
+					[sizeX](const auto& in) -> box_int
 					{
 						return { {in.min_corner().y(), -in.max_corner().x() + sizeX},
 								 {in.max_corner().y(), -in.min_corner().x() + sizeX} };
@@ -241,7 +243,8 @@ namespace in
 			{
 				std::vector<box_int> rotatedBox;
 				rotatedBox.resize(geo.size());
-				std::transform(std::execution::unseq,geo.begin(), geo.end(), rotatedBox.begin(), [sizeX, sizeY](const auto& in) -> box_int
+				std::transform(std::execution::unseq,geo.begin(), geo.end(), rotatedBox.begin(),
+					[sizeX, sizeY](const auto& in) -> box_int
 					{
 						return { {-in.max_corner().x() + sizeX, -in.max_corner().y() + sizeY},
 							     {-in.min_corner().x() + sizeX, -in.min_corner().y() + sizeY} };
@@ -368,28 +371,26 @@ namespace in
 		result.reserve(m_designNets.size());
 		result.resize(m_designNets.size());
 
-		#pragma omp parallel for schedule(static)
-		for (int i = 0; i < m_designNets.size(); i++) 
+		for (size_t i = 0; i < m_designNets.size(); i++)
 		{
 			result[i] = {};
 		}
 
-		#pragma omp parallel for schedule(static)
-		for (auto i = 0; i < result.size(); ++i)
+		for (size_t i = 0; i < result.size(); ++i)
 		{
 			const auto& designNet = m_designNets[i];
 			Net net;
 			net.first = designNet.name;
 			net.second.reserve(designNet.compPinPairs.size());
-			net.second.resize(designNet.compPinPairs.size());
 
 			for (const auto& key : designNet.compPinPairs)
 			{
-				auto pinIt = std::lower_bound(placedPins.begin(), placedPins.end(), key, key_comparator);
+				auto pinIt = std::lower_bound(placedPins.begin(),
+					placedPins.end(), key, key_comparator);
 
 				const auto& pin = *pinIt;
 				const auto pinCenter = getPinCenter(pin);
-				const auto pinIndex = getIndex(pinCenter);
+				const auto pinIndex = getCoordinates(pinCenter);
 				net.second.emplace_back(pinIndex);
 			}
 			result[i] = std::move(net);
@@ -432,6 +433,14 @@ namespace in
 	const std::vector<GlobalRoutingCell>& GlobalRoutingGrid::getGrid() const
 	{
 		return m_grid;
+	}
+
+	std::pair<int,int> GlobalRoutingGrid::getCoordinates(point_int point) const
+	{
+		const auto xI = point.x() / m_xStep;
+		const auto yI = point.y() / m_yStep;
+
+		return {yI, xI};
 	}
 
 	int GlobalRoutingGrid::getIndex(point_int point) const
