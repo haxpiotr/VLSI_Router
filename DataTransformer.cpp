@@ -339,17 +339,19 @@ namespace in
 		m_count = m_cols * m_rows;
 		m_grid.resize(m_count);
 
-		m_xStep = (m_area.max_corner().x() - m_area.min_corner().x())/m_cols;
-		m_yStep = (m_area.max_corner().y() - m_area.min_corner().y())/m_rows;
+		m_xStep = static_cast<float>(m_area.max_corner().x() - m_area.min_corner().x())/m_cols;
+		m_yStep = static_cast<float>(m_area.max_corner().y() - m_area.min_corner().y())/m_rows;
 		m_firstX = m_area.min_corner().x();
 		m_firstY = m_area.min_corner().y();
+		m_maxX = m_cols - 1;
+		m_maxY = m_rows - 1;
 
 		auto getBox = [this](int i) -> box_int
 			{
 				const int scaledI = i % m_cols;
 				const int scaledJ = i / m_cols;
-				return { { m_firstX + scaledI * m_xStep, m_firstY + scaledJ * m_yStep},
-						 { m_firstX + (scaledI + 1) * m_xStep, m_firstY + (scaledJ + 1) * m_yStep } };
+				return { { m_firstX + static_cast<int>(scaledI * m_xStep), m_firstY + static_cast<int>(scaledJ * m_yStep)},
+						 { m_firstX + static_cast<int>((scaledI + 1) * m_xStep), m_firstY + static_cast<int>((scaledJ + 1) * m_yStep) } };
 			};
 
 		for (int i = 0; i < m_count; ++i)
@@ -435,20 +437,20 @@ namespace in
 		return m_grid;
 	}
 
-	std::pair<int,int> GlobalRoutingGrid::getCoordinates(point_int point) const
+	point_int GlobalRoutingGrid::getCoordinates(point_int point) const
 	{
-		const auto xI = point.x() / m_xStep;
-		const auto yI = point.y() / m_yStep;
+		const auto xI = std::min(m_maxX, static_cast<int>(static_cast<float>(point.x() - m_firstX) / m_xStep));
+		const auto yI = std::min(m_maxY, static_cast<int>(static_cast<float>(point.y() - m_firstY) / m_yStep));
 
-		return {yI, xI};
+		return {xI, yI};
 	}
 
 	int GlobalRoutingGrid::getIndex(point_int point) const
 	{
-		const auto xI = point.x() / m_xStep;
-		const auto yI = point.y() / m_yStep;
+		const auto xI = point.x();
+		const auto yI = point.y();
 
-		return yI * (m_cols-1) + xI;
+		return yI * m_cols + xI;
 	}
 
 	std::vector<int> GlobalRoutingGrid::getNeighbours(int i) const

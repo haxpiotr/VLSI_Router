@@ -402,15 +402,20 @@ TEST(DataTransformer, ShouldFindIndex)
 	const auto globalGrid = transformer.getGlobalGrid(100, 100);
 	const auto index = globalGrid.getIndex({ 0,0 });
 	EXPECT_EQ(index, 0);
+	const auto coordsOfZero = globalGrid.getCoordinates({ 0,0 });
+	EXPECT_TRUE(boost::geometry::equals(coordsOfZero, in::point_int{0,0}));
 
 	const auto count = globalGrid.getCount();
 	EXPECT_EQ(count, 10000);
 
-	const auto indexEnd = globalGrid.getIndex({ 390800 - 1, 383040 - 1});
+	const auto endCoords = globalGrid.getCoordinates({ 390800 - 1, 383040 - 1});
+	EXPECT_TRUE(boost::geometry::equals(endCoords, in::point_int{99,99}));
+
+	const auto indexEnd = globalGrid.getIndex(endCoords);
 	EXPECT_EQ(indexEnd, 9999);
 
-	const auto indexMid = globalGrid.getIndex({ 390800/2 - 1, 383040/2 - 1 });
-	EXPECT_EQ(indexMid, 4999);
+	const auto indexMid = globalGrid.getIndex(globalGrid.getCoordinates({ 390800/2 - 1, 383040/2 - 1 }));
+	EXPECT_EQ(indexMid, 4949);
 }
 
 TEST(DataTransformer, ShouldFindNeighbours)
@@ -454,26 +459,44 @@ TEST(GlobalRouter, ShouldGetNetlist)
 	const auto& expectedNetlist = GRouter.getNetlist();
 	EXPECT_EQ(expectedNetlist.size(), 3153);
 
-	const auto net1015it = std::ranges::find_if(expectedNetlist, [](const auto& net)
-	{
-		return net.first == "net1015";
-	});
+	const auto zeroLengthIt = std::ranges::find_if(expectedNetlist, [](const auto& net)
+		{
+			return net.second.size() == 1;
+		});
+	const auto& zeroLength = *zeroLengthIt;
+	const auto isValid = GRouter.verifyForDogleg(zeroLength);
 
-	const auto& net1015 = *net1015it;
+	EXPECT_FALSE(isValid);
 
-	for (const auto& coordinate : net1015.second)
+	GRouter.routeAllDoglegNets();
+
+	const auto net1486It = std::ranges::find_if(expectedNetlist, [](const auto& net)
+		{
+			return net.first == "net1486";
+		});
+
+	const auto& net1486 = *net1486It;
+
+	const auto net1486UpperDoglegPath = GRouter.performUpperDogleg(net1486.second[0], net1486.second[1]);
+	const auto net1486LowerDoglegPath = GRouter.performLowerDogleg(net1486.second[0], net1486.second[1]);
+
+	EXPECT_EQ(net1486UpperDoglegPath.size(), net1486LowerDoglegPath.size());
+
+	const std::vector<in::point_int> expectedLowerDoglegPath{ in::point_int{ 54, 76 },in::point_int{ 55, 76 },in::point_int{ 55, 77 } };
+	EXPECT_EQ(net1486LowerDoglegPath.size(), expectedLowerDoglegPath.size());
+	
+	for(size_t i = 0; i < net1486LowerDoglegPath.size(); ++i)
 	{
-		std::cout << coordinate.first << " " << coordinate.second << std::endl;
+		EXPECT_TRUE(boost::geometry::equals(net1486LowerDoglegPath[i], expectedLowerDoglegPath[i]));
 	}
 
-	const auto histogram = GRouter.getNetlistElementHistogram();
+	const std::vector<in::point_int> expectedUpperDoglegPath{ in::point_int{ 54, 76 },in::point_int{ 54, 77 },in::point_int{ 55, 77 } };
+	EXPECT_EQ(net1486UpperDoglegPath.size(), expectedUpperDoglegPath.size());
 
-	for (const auto& [key, count] : histogram)
+	for(size_t i = 0; i < net1486UpperDoglegPath.size(); ++i)
 	{
-		std::cout << std::to_string(key) << ": " << std::to_string(count) << "\n";
+		EXPECT_TRUE(boost::geometry::equals(net1486UpperDoglegPath[i], expectedUpperDoglegPath[i]));
 	}
-
-	std::cout << std::flush;
 }
 
 TEST(GlobalRouter, ShouldGetBigNetlist)
@@ -489,11 +512,12 @@ TEST(GlobalRouter, ShouldGetBigNetlist)
 	const auto indexNeighs = globalGrid.getNeighbours(index);
 	EXPECT_EQ(indexNeighs.size(), 2);
 
-	const auto itFirst = std::find(indexNeighs.begin(), indexNeighs.end(), 1);
-	const auto itSecond = std::find(indexNeighs.begin(), indexNeighs.end(), 100);
+	const auto itFirst = std::ranges::find(indexNeighs, 1);
+	const auto itSecond = std::ranges::find(indexNeighs, 100);
 	EXPECT_EQ(*itFirst, 1);
 	EXPECT_EQ(*itSecond, 100);
 	in::GlobalRouter GRouter(transformer, 100, 100);
+	GRouter.routeAllDoglegNets();
 	EXPECT_EQ(GRouter.getNetlist().size(), 36834);
 }
 
@@ -517,15 +541,11 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlist)
 	
 	in::GlobalRouter GRouter(transformer, 100, 100);
 	EXPECT_EQ(GRouter.getNetlist().size(), 182000);
-
+	GRouter.routeAllDoglegNets();
 	const auto histogram = GRouter.getNetlistElementHistogram();
-		
-	for (const auto& [key, count] : histogram)
-	{
-		std::cout << std::to_string(key) << ": " << std::to_string(count) << "\n";
-	}
-
-	std::cout << std::flush;
 
 	EXPECT_EQ(histogram.size(), 79);
+	EXPECT_EQ(GRouter.getDoglegPaths().size(), 101983);
+	GRouter.placeDoglegPathsOnGrid();
+	EXPECT_EQ(GRouter.getGrid().size(), 10000);
 }

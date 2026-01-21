@@ -26,6 +26,7 @@ namespace in
 	{
 		int horizontalCongestion{ 0 };
 		int verticalCongestion{ 0 };
+		int overallCongestion{ 0 };
 		box_int box{ {0,0},{0,0} };
 	};
 
@@ -33,7 +34,7 @@ namespace in
 	{
 	public:
 		using Indices = std::vector<int>;
-		using Coordinates = std::pair<int,int>;
+		using Coordinates = point_int;
 		using Net = std::pair<std::string, std::vector<Coordinates>>;
 		using Netlist = std::vector<Net>;
 		GlobalRoutingGrid() = default;
@@ -46,7 +47,7 @@ namespace in
 		[[nodiscard]] size_t getCount() const;
 		[[nodiscard]] std::pair<int,int> getCellCapacity() const;
 		const std::vector<GlobalRoutingCell>& getGrid() const;
-		[[nodiscard]] std::pair<int,int> getCoordinates(point_int point) const;
+		[[nodiscard]] point_int getCoordinates(point_int point) const;
 		[[nodiscard]] int getIndex(point_int point) const;
 		[[nodiscard]] std::vector<int> getNeighbours(int i) const;
 	private:
@@ -54,8 +55,8 @@ namespace in
 		int m_cols{ 0 };
 		int m_rows{ 0 };
 		int m_count{ 0 };
-		int m_xStep{ 0 };
-		int m_yStep{ 0 };
+		float m_xStep{ 0 };
+		float m_yStep{ 0 };
 		int m_firstX{ 0 };
 		int m_firstY{ 0 };
 		box_int m_area { {0,0},{0,0} };
@@ -63,6 +64,9 @@ namespace in
 		std::vector<def::Net> m_designNets;
 		int m_cellHorizontalCapacity{ 0 };
 		int m_cellVerticalCapacity{ 0 };
+		int m_overallCellCapacity{ 0 };
+		int m_maxX{ 0 };
+		int m_maxY{ 0 };
 		std::vector<GlobalRoutingCell> m_grid;
 	};
 
@@ -76,7 +80,6 @@ namespace in
 	private:
 		void resizeLibraryPins();
 		void rotateLibraryPins();
-		void placeDesignPins();
 
 		[[nodiscard]] std::pair<int, int> getSize(const lef::Macro& macro) const;
 
