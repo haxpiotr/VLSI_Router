@@ -1,17 +1,20 @@
 #include "GlobalRouter.hpp"
+#include "DoglegRouter.hpp"
 
 #include <execution>
+#include <algorithm>
+#include <random>
+
+#include <omp.h>
 
 namespace in
 {
-
 	GlobalRouter::GlobalRouter(DataTransformer& dataTransformer, unsigned int cols, unsigned int rows)
 		: m_dataTransformer{ dataTransformer }
 	{
 		m_placedPins = m_dataTransformer.getPlacedPins();
 		m_globalGrid = m_dataTransformer.getGlobalGrid(cols, rows);
 		m_grid = m_globalGrid.getGrid();
-
 		auto key_comparator = [](const auto& a, const auto& b)
 			{
 				return a.compIdPair < b.compIdPair;
@@ -34,142 +37,120 @@ namespace in
 		return hist;
 	}
 
-	const GlobalRouter::Netlist& GlobalRouter::getNetlist() const
+	const GlobalSolutions& GlobalRouter::getDoglegSolutions() const
 	{
-			return m_netlist;
+		return m_doglegSolutions;
 	}
 
-	bool GlobalRouter::verifyForDogleg(const Net& net) const
+	const Netlist& GlobalRouter::getNetlist() const
 	{
-		if (net.second.size() != 2)
+		return m_netlist;
+	}
+
+	void GlobalRouter::initializeDoglegTypes()
+	{
+		m_doglegTypes.resize(m_twoPointNets.size(), DoglegType::UPPER);
+	}
+
+	void GlobalRouter::readAllTwoPointNets()
+	{
+		m_twoPointNets.reserve(m_netlist.size());
+
+		for (const auto& net : m_netlist)
 		{
-			return false;
+			if (net.second.size() != 2)
+			{
+				continue;
+			}
+			
+			m_twoPointNets.push_back(net);
 		}
 
-		return true;
-	}
-
-	std::vector<GlobalRouter::Coord> GlobalRouter::performUpperDogleg(const Coord& a, const Coord& b) const
-	{		
-		auto compare = [](const Coord& a, const Coord& b)
-			{
-				return a.y() < b.y();
-			};
-		const auto& [start, end] = std::minmax(a, b, compare);
-		const auto verticalDistance = end.y() - start.y();
-		const auto horizontalDistance = end.x() - start.x();
-
-		const int verticalStep {1};
-		const int horizontalStep = horizontalDistance > 0 ? 1 : -1;
-
-		const size_t pathSize = 1 + std::abs(verticalDistance) + std::abs(horizontalDistance);
-
-		std::vector<Coord> path(pathSize);
-
-		auto it = std::generate_n(path.begin(), std::abs(verticalDistance), [&,currentY = start.y()]() mutable
-		{
-			Coord coord{ start.x(), currentY};
-			currentY += verticalStep;
-			return coord;
-		});
-
-		std::generate(it, path.end(), [&,currentX = start.x()]() mutable
-		{
-			Coord coord{ currentX, start.y() + verticalDistance };
-			currentX += horizontalStep;
-			return coord;
-		});
-
-		return path;
-	}
-
-	std::vector<GlobalRouter::Coord> GlobalRouter::performLowerDogleg(const Coord& a, const Coord& b) const
-	{
-		auto compare = [](const Coord& a, const Coord& b)
-			{
-				return a.y() < b.y();
-			};
-		const auto& [start, end] = std::minmax(a, b, compare);
-		const auto verticalDistance = end.y() - start.y();
-		const auto horizontalDistance = end.x() - start.x();
-
-		const int verticalStep {1};
-		const int horizontalStep = horizontalDistance > 0 ? 1 : -1;
-
-		const size_t pathSize = 1 + std::abs(verticalDistance) + std::abs(horizontalDistance);
-
-		std::vector<Coord> path(pathSize);
-
-		auto it = std::generate_n(path.begin(), std::abs(horizontalDistance), [&,currentX = start.x()]() mutable
-		{
-			Coord coord{ currentX, start.y() };
-			currentX += horizontalStep;
-			return coord;
-		});
-
-		std::generate(it, path.end(), [&,currentX = start.x() + horizontalDistance, currentY = start.y()]() mutable
-		{
-			Coord coord{ currentX, currentY};
-			currentY += verticalStep;
-			return coord;
-		});
-
-		return path;
+		m_twoPointNets.shrink_to_fit();
 	}
 
 	void GlobalRouter::routeAllDoglegNets()
 	{
-		std::vector<Net> doglegNets;
-		doglegNets.reserve(m_netlist.size());
+		m_doglegSolutions.reserve(m_twoPointNets.size());
+		m_doglegSolutions.resize(m_twoPointNets.size());
 
-		for (const auto& net : m_netlist)
+		for (size_t i = 0; i < m_twoPointNets.size(); ++i)
 		{
-			if (verifyForDogleg(net))
-			{
-				doglegNets.push_back(net);
-			}
+			const auto& net = m_twoPointNets[i];
+			m_doglegSolutions[i].path = createDoglegRouter(m_doglegTypes[i])->route(net);
+			m_doglegSolutions[i].name = net.first;
+			m_doglegSolutions[i].type = m_doglegTypes[i];
 		}
-
-		std::vector<std::vector<Coord>> doglegPaths;
-		doglegPaths.reserve(doglegNets.size());
-
-		for (const auto& net : doglegNets)
-		{
-			if(net.second[0].x()>=100 || net.second[0].y()>=100 ||
-			   net.second[1].x()>=100 || net.second[1].y()>=100)
-			{
-				std::cout << "Coordinates out of bounds! on net: " << net.first << "\n";
-			}
-			
-			const auto upperDoglegPath = performUpperDogleg(net.second[0], net.second[1]);
-			doglegPaths.push_back(upperDoglegPath);
-		}
-
-		m_doglegPaths = doglegPaths;
 	}
 
 	void GlobalRouter::placeDoglegPathsOnGrid()
 	{
-		for (const auto& path : m_doglegPaths)
+		for (const auto& solution : m_doglegSolutions)
 		{
-			for(const auto& coord : path)
+			for(const auto& coord : solution.path)
 			{
 				const auto index = m_globalGrid.getIndex(coord);
-				m_grid[index].horizontalCongestion++;
+				m_grid.cells[index].overallCongestion++;
 			}
 		}
 	}
 
-	const std::vector<GlobalRoutingCell>& GlobalRouter::getGrid() const
+	void GlobalRouter::createInitialSolution()
+	{
+		readAllTwoPointNets();
+		initializeDoglegTypes();
+		routeAllDoglegNets();
+		placeDoglegPathsOnGrid();
+	}
+
+	const GlobalRoutingCells& GlobalRouter::getGrid() const
 	{
 		return m_grid;
 	}
 
-	const std::vector<std::vector<GlobalRouter::Coord>>& GlobalRouter::getDoglegPaths() const 
+	void GlobalRouter::performSA(
+		size_t maxIterations, 
+		float initialTemperature, 
+		float coolingRate)
 	{
-		return m_doglegPaths;
+		m_solver = std::make_unique<SeqSA>(
+			m_globalGrid,
+			m_globalGrid.getGrid(),
+			m_doglegSolutions,
+			initialTemperature,
+			coolingRate,
+			0.001f,
+			maxIterations);
+		m_doglegSolutions = m_solver->optimize();
 	}
 
+	void GlobalRouter::performSAPar(
+		size_t maxIterations, 
+		float initialTemperature, 
+		float coolingRate)
+	{
+		m_solver = std::make_unique<ParSA>(
+			m_globalGrid,
+			m_globalGrid.getGrid(),
+			m_doglegSolutions,
+			initialTemperature,
+			coolingRate,
+			0.001f,
+			maxIterations);
+		m_doglegSolutions = m_solver->optimize();
+	}
+
+	void GlobalRouter::performSAParSpacePartitioned(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces)
+	{
+		m_solver = std::make_unique<SpacePartitionedSA>(
+			m_globalGrid,
+			m_globalGrid.getGrid(),
+			m_doglegSolutions,
+			initialTemperature,
+			coolingRate,
+			0.001f,
+			maxIterations,
+			spaces);
+		m_doglegSolutions = m_solver->optimize();
+	}
 }
-
-

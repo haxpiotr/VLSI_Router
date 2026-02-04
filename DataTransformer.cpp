@@ -3,6 +3,7 @@
 #include <boost/geometry/strategies/transform/matrix_transformers.hpp>
 
 #include <execution>
+#include <fstream>
 
 namespace in
 {
@@ -337,7 +338,7 @@ namespace in
 		: m_cols{cols}, m_rows{rows}, m_area{area}, m_tracks{tracks}, m_designNets{ nets }
 	{
 		m_count = m_cols * m_rows;
-		m_grid.resize(m_count);
+		m_grid.cells.resize(m_count);
 
 		m_xStep = static_cast<float>(m_area.max_corner().x() - m_area.min_corner().x())/m_cols;
 		m_yStep = static_cast<float>(m_area.max_corner().y() - m_area.min_corner().y())/m_rows;
@@ -356,7 +357,7 @@ namespace in
 
 		for (int i = 0; i < m_count; ++i)
 		{
-			m_grid[i].box = getBox(i);
+			m_grid.cells[i].box = getBox(i);
 		}
 
 		calculateCellCapacity();
@@ -403,7 +404,7 @@ namespace in
 
 	void GlobalRoutingGrid::calculateCellCapacity()
 	{
-		const auto standardBox = m_grid.front().box;
+		const auto standardBox = m_grid.cells.front().box;
 
 		int horizontal{ 0 };
 		int vertical{ 0 };
@@ -432,7 +433,7 @@ namespace in
 		return { m_cellHorizontalCapacity, m_cellVerticalCapacity };
 	}
 
-	const std::vector<GlobalRoutingCell>& GlobalRoutingGrid::getGrid() const
+	const GlobalRoutingCells& GlobalRoutingGrid::getGrid() const
 	{
 		return m_grid;
 	}
@@ -483,7 +484,7 @@ namespace in
 
 	size_t GlobalRoutingGrid::getCount() const
 	{
-		return m_grid.size();
+		return m_grid.cells.size();
 	}
 
 }

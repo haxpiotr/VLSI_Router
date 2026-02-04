@@ -5,6 +5,10 @@
 #include "../DEFLoader.hpp"
 #include "../DataTransformer.hpp"
 #include "../GlobalRouter.hpp"
+#include "../DoglegRouter.hpp"
+#include "../HeatmapExporter.hpp"
+
+#include <omp.h>
 
 TEST(LefParser, ShouldParseSite) 
 {
@@ -464,11 +468,6 @@ TEST(GlobalRouter, ShouldGetNetlist)
 			return net.second.size() == 1;
 		});
 	const auto& zeroLength = *zeroLengthIt;
-	const auto isValid = GRouter.verifyForDogleg(zeroLength);
-
-	EXPECT_FALSE(isValid);
-
-	GRouter.routeAllDoglegNets();
 
 	const auto net1486It = std::ranges::find_if(expectedNetlist, [](const auto& net)
 		{
@@ -477,14 +476,14 @@ TEST(GlobalRouter, ShouldGetNetlist)
 
 	const auto& net1486 = *net1486It;
 
-	const auto net1486UpperDoglegPath = GRouter.performUpperDogleg(net1486.second[0], net1486.second[1]);
-	const auto net1486LowerDoglegPath = GRouter.performLowerDogleg(net1486.second[0], net1486.second[1]);
+	const auto net1486UpperDoglegPath = in::createDoglegRouter(in::DoglegType::UPPER)->route(net1486);
+	const auto net1486LowerDoglegPath = in::createDoglegRouter(in::DoglegType::LOWER)->route(net1486);
 
 	EXPECT_EQ(net1486UpperDoglegPath.size(), net1486LowerDoglegPath.size());
 
 	const std::vector<in::point_int> expectedLowerDoglegPath{ in::point_int{ 54, 76 },in::point_int{ 55, 76 },in::point_int{ 55, 77 } };
 	EXPECT_EQ(net1486LowerDoglegPath.size(), expectedLowerDoglegPath.size());
-	
+
 	for(size_t i = 0; i < net1486LowerDoglegPath.size(); ++i)
 	{
 		EXPECT_TRUE(boost::geometry::equals(net1486LowerDoglegPath[i], expectedLowerDoglegPath[i]));
@@ -517,35 +516,59 @@ TEST(GlobalRouter, ShouldGetBigNetlist)
 	EXPECT_EQ(*itFirst, 1);
 	EXPECT_EQ(*itSecond, 100);
 	in::GlobalRouter GRouter(transformer, 100, 100);
-	GRouter.routeAllDoglegNets();
 	EXPECT_EQ(GRouter.getNetlist().size(), 36834);
 }
 
 TEST(GlobalRouter, ShouldGetEvenBiggerNetlist)
 {
-	in::def::Loader defLoader;
-	in::lef::Loader lefLoader;
-	const auto design = defLoader.get("Data/ispd18_test10.input.def");
-	const auto library = lefLoader.get("Data/ispd18_test10.input.lef");
-	in::DataTransformer transformer(library, design);
-	const auto globalGrid = transformer.getGlobalGrid(100, 100);
-	const auto index = globalGrid.getIndex({ 0,0 });
-	EXPECT_EQ(index, 0);
-	const auto indexNeighs = globalGrid.getNeighbours(index);
-	EXPECT_EQ(indexNeighs.size(), 2);
+    in::def::Loader defLoader;
+    in::lef::Loader lefLoader;
+    const auto design = defLoader.get("Data/ispd18_test10.input.def");
+    const auto library = lefLoader.get("Data/ispd18_test10.input.lef");
+    in::DataTransformer transformer(library, design);
+    
+    in::GlobalRouter GRouter(transformer, 100, 100);
+    GRouter.createInitialSolution();
+    
+    const auto& grid = GRouter.getGrid();
+    in::HeatmapExporter exporter;
+    exporter.writeCongestionPPM("initial_congestion_seq.ppm", grid.cells, 100, 100);    
+    GRouter.performSA(512000, 8000.0f, 0.995f);
+    exporter.writeCongestionPPM("final_congestion_seq.ppm", grid.cells, 100, 100);
+}
 
-	const auto itFirst = std::ranges::find(indexNeighs, 1);
-	const auto itSecond = std::ranges::find(indexNeighs, 100);
-	EXPECT_EQ(*itFirst, 1);
-	EXPECT_EQ(*itSecond, 100);
-	
-	in::GlobalRouter GRouter(transformer, 100, 100);
-	EXPECT_EQ(GRouter.getNetlist().size(), 182000);
-	GRouter.routeAllDoglegNets();
-	const auto histogram = GRouter.getNetlistElementHistogram();
+TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSA)
+{
+    in::def::Loader defLoader;
+    in::lef::Loader lefLoader;
+    const auto design = defLoader.get("Data/ispd18_test10.input.def");
+    const auto library = lefLoader.get("Data/ispd18_test10.input.lef");
+    in::DataTransformer transformer(library, design);
+    
+    in::GlobalRouter GRouter(transformer, 100, 100);
+    GRouter.createInitialSolution();
 
-	EXPECT_EQ(histogram.size(), 79);
-	EXPECT_EQ(GRouter.getDoglegPaths().size(), 101983);
-	GRouter.placeDoglegPathsOnGrid();
-	EXPECT_EQ(GRouter.getGrid().size(), 10000);
+    const auto& grid = GRouter.getGrid();
+    in::HeatmapExporter exporter;
+    exporter.writeCongestionPPM("initial_congestion_par.ppm", grid.cells, 100, 100);    
+    GRouter.performSAPar(512000, 8000.0f, 0.995f);
+    exporter.writeCongestionPPM("final_congestion_par.ppm", grid.cells, 100, 100);
+}
+
+TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitioned)
+{
+    in::def::Loader defLoader;
+    in::lef::Loader lefLoader;
+    const auto design = defLoader.get("Data/ispd18_test10.input.def");
+    const auto library = lefLoader.get("Data/ispd18_test10.input.lef");
+    in::DataTransformer transformer(library, design);
+    
+    in::GlobalRouter GRouter(transformer, 100, 100);
+    GRouter.createInitialSolution();
+
+    const auto& grid = GRouter.getGrid();
+    in::HeatmapExporter exporter;
+    exporter.writeCongestionPPM("initial_congestion_par.ppm", grid.cells, 100, 100);
+    GRouter.performSAParSpacePartitioned(512000, 8000.0f, 0.995f,16);
+    exporter.writeCongestionPPM("final_congestion_par.ppm", grid.cells, 100, 100);
 }

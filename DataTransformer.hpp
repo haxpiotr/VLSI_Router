@@ -30,6 +30,12 @@ namespace in
 		box_int box{ {0,0},{0,0} };
 	};
 
+	struct GlobalRoutingCells
+	{
+		std::vector<GlobalRoutingCell> cells;
+		float penalty{ 0.0f };
+	};
+
 	class GlobalRoutingGrid
 	{
 	public:
@@ -46,7 +52,7 @@ namespace in
 		[[nodiscard]] Netlist getNetlist(const std::vector<Pin>& placedPins) const;
 		[[nodiscard]] size_t getCount() const;
 		[[nodiscard]] std::pair<int,int> getCellCapacity() const;
-		const std::vector<GlobalRoutingCell>& getGrid() const;
+		const GlobalRoutingCells& getGrid() const;
 		[[nodiscard]] point_int getCoordinates(point_int point) const;
 		[[nodiscard]] int getIndex(point_int point) const;
 		[[nodiscard]] std::vector<int> getNeighbours(int i) const;
@@ -67,7 +73,7 @@ namespace in
 		int m_overallCellCapacity{ 0 };
 		int m_maxX{ 0 };
 		int m_maxY{ 0 };
-		std::vector<GlobalRoutingCell> m_grid;
+		GlobalRoutingCells m_grid;
 	};
 
 	class DataTransformer
@@ -82,21 +88,15 @@ namespace in
 		void rotateLibraryPins();
 
 		[[nodiscard]] std::pair<int, int> getSize(const lef::Macro& macro) const;
-
 		[[nodiscard]] std::vector<Pin> getResizedPins(const lef::Macro& macro) const;
 		[[nodiscard]] std::vector<Pin> getResizedPinsUnseq(const lef::Macro& macro) const;
-
 		[[nodiscard]] Pin getRotatedPin(const lef::Macro& macro, const Pin& pin, def::Orientation orientation) const;
 		[[nodiscard]] std::vector<Pin> getRotatedPins(const lef::Macro& macro, const std::vector<Pin>& pins, def::Orientation orientation) const;
-
 		[[nodiscard]] Pin placePin(const def::Component& macro, const Pin& pin) const;
-
 		const std::map<LibraryPinsKey, std::vector<Pin>>& getResizedLibraryPins() const;
-
 		[[nodiscard]] Pin getPlacedDesignPin(const def::Pin& designPin) const;
 		
 	private:
-		
 		const lef::Data& m_library;
 		const def::Data& m_design;
 		std::map<LibraryPinsKey, std::vector<Pin>> m_resizedPins;

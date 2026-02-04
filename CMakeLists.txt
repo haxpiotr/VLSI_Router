@@ -44,6 +44,15 @@ set(LIB_HEADERS
     "GlobalRouter.hpp"
     "LEFData.hpp"
     "DEFData.hpp"
+    "ISpecializedRouter.hxx"
+    "IOptimizationSolver.hxx"
+    "DoglegRouter.hpp"
+    "HeatmapExporter.hpp"
+    "NetSolution.hpp"
+    "SeqSA.hpp"
+    "ParSA.hpp"
+    "SpacePartitionedSA.hpp"
+    "SpacePartitionedGPUSA.hpp"
 )
 
 set(LIB_SOURCES
@@ -51,6 +60,12 @@ set(LIB_SOURCES
     "DEFLoader.cpp"
     "LEFLoader.cpp"
     "GlobalRouter.cpp"
+    "DoglegRouter.cpp"
+    "NetSolution.cpp"
+    "SeqSA.cpp"
+    "ParSA.cpp"
+    "SpacePartitionedSA.cpp"
+    "SpacePartitionedGPUSA.cpp"
 )
 
 add_library(${PROJECT_NAME} STATIC ${LIB_SOURCES})
@@ -61,11 +76,20 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     OpenMP::OpenMP_CXX
 )
 
+include(CheckIPOSupported)
+check_ipo_supported(RESULT supported OUTPUT error)
+
+if(supported)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+else()
+    message(STATUS "LTO not supported: ${error}")
+endif()
+
 target_include_directories(${PROJECT_NAME} PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_compile_options(${PROJECT_NAME} PRIVATE -Werror -Wextra -Wall)
+target_compile_options(${PROJECT_NAME} PRIVATE -Werror -Wextra -Wall -fopenmp-simd)
 
 # Set optimization levels based on build type
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
