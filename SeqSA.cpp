@@ -118,7 +118,6 @@ namespace in
                 auto candidateSolution = previousSolution;
 
                 flipDoglegType(candidateSolution);
-                route(candidateSolution);
 
                 const float newPenalty = ripUpAndReroute(m_startingGrid, previousSolution, candidateSolution);
                 const float deltaPenalty = newPenalty - currentPenalty;
@@ -133,6 +132,8 @@ namespace in
                     ripUpAndReroute(m_startingGrid, candidateSolution, previousSolution);
                 }
             }
+
+            std::cout << "Temperature: " << temperature << ", Current Penalty: " << currentPenalty << std::endl;
 
             temperature *= m_coolingRate;
         }

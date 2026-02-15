@@ -30,6 +30,8 @@ namespace in
 		float temperature = m_initialTemperature;
 		auto globalBestSolutions = m_initialSolutions;
 		float globalBestPenalty = std::numeric_limits<float>::max();
+		auto globalBestGrid = m_startingGrid;
+		addSolutions(globalBestGrid, globalBestSolutions);
 
 		while(temperature > m_eps)
 		{
@@ -37,9 +39,9 @@ namespace in
 			{
 				thread_local std::random_device rd;
 				thread_local std::mt19937 gen(rd() ^ omp_get_thread_num());
-				thread_local auto localGrid = m_startingGrid; 
-				thread_local auto localSolutions = createRandomSolutions(m_initialSolutions, gen);
-				addSolutions(localGrid, localSolutions);
+				thread_local auto localGrid = globalBestGrid;
+				thread_local auto localSolutions = globalBestSolutions;
+				
 				float localCurrentPenalty = localGrid.penalty;
 				const auto threadCount = omp_get_num_threads();
 				
@@ -67,14 +69,15 @@ namespace in
 
 				#pragma omp critical
 				{
-					if (localCurrentPenalty < globalBestPenalty)
+					if (localGrid.penalty < globalBestPenalty)
 					{
 						globalBestPenalty = localCurrentPenalty;
 						globalBestSolutions = localSolutions;
+						globalBestGrid = localGrid;
 					}
 				}
 			}
-
+			//std::cout << "Temperature: " << temperature << ", Current Penalty: " << globalBestPenalty << std::endl;
 			temperature *= m_coolingRate;	
 		}
 

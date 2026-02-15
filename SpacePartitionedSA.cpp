@@ -105,6 +105,8 @@ namespace in
 					globalBestSolutions = localSolutions;
 				}
 			}
+
+			std::cout << "Temperature: " << temperature << ", Current Penalty: " << globalBestPenalty << std::endl;
 		}
 
 		return globalBestSolutions;
