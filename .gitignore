@@ -1,7 +1,8 @@
 /build/
 /build_debug/
+/out
 CMakeLists.txt.save
-
+/.vs
 *.out
 *.bin
 *.a

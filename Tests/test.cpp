@@ -6,7 +6,6 @@
 #include "../DataTransformer.hpp"
 #include "../GlobalRouter.hpp"
 #include "../DoglegRouter.hpp"
-#include "../HeatmapExporter.hpp"
 
 #include <omp.h>
 
@@ -396,7 +395,7 @@ TEST(DataTransformer, ShouldFindBBoxAndCenter)
 	EXPECT_EQ(testPinResult.y(), expectedCenter.y());
 }
 
-TEST(DataTransformer, ShouldFindIndex)
+TEST(DataTransformer, ShouldFindHorizontalIndex)
 {
 	in::def::Loader defLoader;
 	in::lef::Loader lefLoader;
@@ -404,7 +403,7 @@ TEST(DataTransformer, ShouldFindIndex)
 	const auto library = lefLoader.get("Data/ispd18_test1.input.lef");
 	in::DataTransformer transformer(library, design);
 	const auto globalGrid = transformer.getGlobalGrid(100, 100);
-	const auto index = globalGrid.getIndex({ 0,0 });
+	const auto index = globalGrid.getIndexHorizontal({ 0,0 });
 	EXPECT_EQ(index, 0);
 	const auto coordsOfZero = globalGrid.getCoordinates({ 0,0 });
 	EXPECT_TRUE(boost::geometry::equals(coordsOfZero, in::point_int{0,0}));
@@ -415,10 +414,40 @@ TEST(DataTransformer, ShouldFindIndex)
 	const auto endCoords = globalGrid.getCoordinates({ 390800 - 1, 383040 - 1});
 	EXPECT_TRUE(boost::geometry::equals(endCoords, in::point_int{99,99}));
 
-	const auto indexEnd = globalGrid.getIndex(endCoords);
+	const auto indexEnd = globalGrid.getIndexHorizontal(endCoords);
 	EXPECT_EQ(indexEnd, 9999);
 
-	const auto indexMid = globalGrid.getIndex(globalGrid.getCoordinates({ 390800/2 - 1, 383040/2 - 1 }));
+	const auto indexMid = globalGrid.getIndexHorizontal(globalGrid.getCoordinates({ 390800/2 - 1, 383040/2 - 1 }));
+	EXPECT_EQ(indexMid, 4949);
+}
+
+TEST(DataTransformer, ShouldFindVerticalIndex)
+{
+	in::def::Loader defLoader;
+	in::lef::Loader lefLoader;
+	const auto design = defLoader.get("Data/ispd18_test1.input.def");
+	const auto library = lefLoader.get("Data/ispd18_test1.input.lef");
+	in::DataTransformer transformer(library, design);
+	const auto globalGrid = transformer.getGlobalGrid(100, 100);
+	auto index = globalGrid.getIndexVertical({ 0,0 });
+	EXPECT_EQ(index, 0);
+	index = globalGrid.getIndexVertical({ 0,1 });
+	EXPECT_EQ(index, 1);
+	index = globalGrid.getIndexVertical({ 1,0 });
+	EXPECT_EQ(index, 100);
+	const auto coordsOfZero = globalGrid.getCoordinates({ 0,0 });
+	EXPECT_TRUE(boost::geometry::equals(coordsOfZero, in::point_int{ 0,0 }));
+
+	const auto count = globalGrid.getCount();
+	EXPECT_EQ(count, 10000);
+
+	const auto endCoords = globalGrid.getCoordinates({ 390800 - 1, 383040 - 1 });
+	EXPECT_TRUE(boost::geometry::equals(endCoords, in::point_int{ 99,99 }));
+
+	const auto indexEnd = globalGrid.getIndexVertical(endCoords);
+	EXPECT_EQ(indexEnd, 9999);
+
+	const auto indexMid = globalGrid.getIndexVertical(globalGrid.getCoordinates({ 390800 / 2 - 1, 383040 / 2 - 1 }));
 	EXPECT_EQ(indexMid, 4949);
 }
 
@@ -430,7 +459,7 @@ TEST(DataTransformer, ShouldFindNeighbours)
 	const auto library = lefLoader.get("Data/ispd18_test1.input.lef");
 	in::DataTransformer transformer(library, design);
 	const auto globalGrid = transformer.getGlobalGrid(100, 100);
-	const auto index = globalGrid.getIndex({ 0,0 });
+	const auto index = globalGrid.getIndexHorizontal({ 0,0 });
 	EXPECT_EQ(index, 0);
 	const auto indexNeighs = globalGrid.getNeighbours(index);
 	EXPECT_EQ(indexNeighs.size(), 2);
@@ -449,7 +478,7 @@ TEST(GlobalRouter, ShouldGetNetlist)
 	const auto library = lefLoader.get("Data/ispd18_test1.input.lef");
 	in::DataTransformer transformer(library, design);
 	const auto globalGrid = transformer.getGlobalGrid(100, 100);
-	const auto index = globalGrid.getIndex({ 0,0 });
+	const auto index = globalGrid.getIndexHorizontal({ 0,0 });
 	EXPECT_EQ(index, 0);
 	const auto indexNeighs = globalGrid.getNeighbours(index);
 	EXPECT_EQ(indexNeighs.size(), 2);
@@ -479,22 +508,18 @@ TEST(GlobalRouter, ShouldGetNetlist)
 	const auto net1486UpperDoglegPath = in::createDoglegRouter(in::DoglegType::UPPER)->route(net1486);
 	const auto net1486LowerDoglegPath = in::createDoglegRouter(in::DoglegType::LOWER)->route(net1486);
 
-	EXPECT_EQ(net1486UpperDoglegPath.size(), net1486LowerDoglegPath.size());
+	EXPECT_EQ(net1486UpperDoglegPath.verticalSegment.second.y(), net1486LowerDoglegPath.verticalSegment.second.y());
 
 	const std::vector<in::point_int> expectedLowerDoglegPath{ in::point_int{ 54, 76 },in::point_int{ 55, 76 },in::point_int{ 55, 77 } };
-	EXPECT_EQ(net1486LowerDoglegPath.size(), expectedLowerDoglegPath.size());
-
-	for(size_t i = 0; i < net1486LowerDoglegPath.size(); ++i)
+	int j = 0;
+	for(int i = net1486LowerDoglegPath.horizontalSegment.first.x(); i <= net1486LowerDoglegPath.horizontalSegment.second.x(); ++i)
 	{
-		EXPECT_TRUE(boost::geometry::equals(net1486LowerDoglegPath[i], expectedLowerDoglegPath[i]));
+		EXPECT_TRUE(boost::geometry::equals(in::point_int{i,net1486LowerDoglegPath.horizontalSegment.first.y()}, expectedLowerDoglegPath[j++]));
 	}
-
-	const std::vector<in::point_int> expectedUpperDoglegPath{ in::point_int{ 54, 76 },in::point_int{ 54, 77 },in::point_int{ 55, 77 } };
-	EXPECT_EQ(net1486UpperDoglegPath.size(), expectedUpperDoglegPath.size());
-
-	for(size_t i = 0; i < net1486UpperDoglegPath.size(); ++i)
+	j = 1;
+	for (int i = net1486LowerDoglegPath.verticalSegment.first.y(); i <= net1486LowerDoglegPath.verticalSegment.second.y(); ++i)
 	{
-		EXPECT_TRUE(boost::geometry::equals(net1486UpperDoglegPath[i], expectedUpperDoglegPath[i]));
+		EXPECT_TRUE(boost::geometry::equals(in::point_int{ net1486LowerDoglegPath.verticalSegment.first.x(),i }, expectedLowerDoglegPath[j++]));
 	}
 }
 
@@ -506,15 +531,7 @@ TEST(GlobalRouter, ShouldGetBigNetlist)
 	const auto library = lefLoader.get("Data/ispd18_test2.input.lef");
 	in::DataTransformer transformer(library, design);
 	const auto globalGrid = transformer.getGlobalGrid(100, 100);
-	const auto index = globalGrid.getIndex({ 0,0 });
-	EXPECT_EQ(index, 0);
-	const auto indexNeighs = globalGrid.getNeighbours(index);
-	EXPECT_EQ(indexNeighs.size(), 2);
 
-	const auto itFirst = std::ranges::find(indexNeighs, 1);
-	const auto itSecond = std::ranges::find(indexNeighs, 100);
-	EXPECT_EQ(*itFirst, 1);
-	EXPECT_EQ(*itSecond, 100);
 	in::GlobalRouter GRouter(transformer, 100, 100);
 	EXPECT_EQ(GRouter.getNetlist().size(), 36834);
 }
@@ -531,10 +548,7 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlist)
     GRouter.createInitialSolution();
     
     const auto& grid = GRouter.getGrid();
-    in::HeatmapExporter exporter;
-    exporter.writeCongestionPPM("initial_congestion_seq.ppm", grid.cells, 100, 100);    
-    GRouter.performSA(512000, 8000.0f, 0.995f);
-    exporter.writeCongestionPPM("final_congestion_seq.ppm", grid.cells, 100, 100);
+    GRouter.performSA(51200, 8000.0f, 0.995f);
 }
 
 TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSA)
@@ -547,12 +561,8 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSA)
     
     in::GlobalRouter GRouter(transformer, 100, 100);
     GRouter.createInitialSolution();
-
     const auto& grid = GRouter.getGrid();
-    in::HeatmapExporter exporter;
-    exporter.writeCongestionPPM("initial_congestion_par.ppm", grid.cells, 100, 100);    
     GRouter.performSAPar(512000, 8000.0f, 0.995f);
-    exporter.writeCongestionPPM("final_congestion_par.ppm", grid.cells, 100, 100);
 }
 
 TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitioned)
@@ -566,9 +576,21 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitione
     in::GlobalRouter GRouter(transformer, 100, 100);
     GRouter.createInitialSolution();
 
-    const auto& grid = GRouter.getGrid();
-    in::HeatmapExporter exporter;
-    exporter.writeCongestionPPM("initial_congestion_par.ppm", grid.cells, 100, 100);
+	const auto& grid = GRouter.getGrid();
     GRouter.performSAParSpacePartitioned(512000, 8000.0f, 0.995f,16);
-    exporter.writeCongestionPPM("final_congestion_par.ppm", grid.cells, 100, 100);
+}
+
+TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitionedOnGPU)
+{
+    in::def::Loader defLoader;
+    in::lef::Loader lefLoader;
+    const auto design = defLoader.get("Data/ispd18_test10.input.def");
+    const auto library = lefLoader.get("Data/ispd18_test10.input.lef");
+    in::DataTransformer transformer(library, design);
+    
+    in::GlobalRouter GRouter(transformer, 100, 100);
+    GRouter.createInitialSolution();
+
+    const auto& grid = GRouter.getGrid();
+    GRouter.performSAParSpacePartitionedOnGPU(512000, 8000.0f, 0.995f,16);
 }

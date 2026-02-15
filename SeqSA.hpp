@@ -18,8 +18,8 @@ namespace in
                                         size_t maxIterations);
         GlobalSolutions optimize() override;
     protected:
-        void addSolution(GlobalRoutingCells& grid, const NetSolution& solution);
-        void substractSolution(GlobalRoutingCells& grid, const NetSolution& solution);
+        void addSolution(GlobalRoutingCells& grid, const DoglegSegment& solution);
+        void substractSolution(GlobalRoutingCells &grid, const DoglegSegment &solution);
         void addSolutions(GlobalRoutingCells& grid, const GlobalSolutions& solutions);
         float calculateCellPenalty(const GlobalRoutingCell& cell) const;
         float ripUpAndReroute(GlobalRoutingCells& grid, const NetSolution& oldSolution, const NetSolution& newSolution);

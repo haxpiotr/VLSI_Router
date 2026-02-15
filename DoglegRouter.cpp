@@ -25,7 +25,7 @@ bool DoglegRouter::verifyForDogleg(const Net& net) const
 	return true;
 }
 
-RoutedPath DoglegRouter::route(const Net& net) const
+DoglegSegment DoglegRouter::route(const Net& net) const
 {
 	if (!verifyForDogleg(net))
 	{
@@ -35,71 +35,47 @@ RoutedPath DoglegRouter::route(const Net& net) const
 	return perform(net.second[0], net.second[1]);
 }
 
-std::vector<Coord> UpperDoglegRouter::perform(const Coord& a, const Coord& b) const
+DoglegSegment UpperDoglegRouter::perform(const Coord& a, const Coord& b) const
 {		
-	auto compare = [](const Coord& a, const Coord& b)
+	auto compareVertical = [](const Coord& a, const Coord& b)
 		{
 			return a.y() < b.y();
 		};
-	const auto& [start, end] = std::minmax(a, b, compare);
-	const auto verticalDistance = end.y() - start.y();
-	const auto horizontalDistance = end.x() - start.x();
 
-	const int verticalStep {1};
-	const int horizontalStep = horizontalDistance > 0 ? 1 : -1;
+	auto compareHorizontal = [](const Coord& a, const Coord& b)
+		{
+			return a.x() < b.x();
+		};
 
-	const size_t pathSize = 1 + std::abs(verticalDistance) + std::abs(horizontalDistance);
+	const auto& [startV, endV] = std::minmax(a, b, compareVertical);
+	const auto& [startH, endH] = std::minmax(a, b, compareHorizontal);
 
-	std::vector<Coord> path(pathSize);
+	DoglegSegment result;
+	result.verticalSegment = { startV, {startV.x(), endV.y()} };
+	result.horizontalSegment = { {startH.x(),endV.y()}, {endH.x(), endV.y()} };
 
-	auto it = std::generate_n(path.begin(), std::abs(verticalDistance), [&,currentY = start.y()]() mutable
-	{
-		Coord coord{ start.x(), currentY};
-		currentY += verticalStep;
-		return coord;
-	});
-
-	std::generate(it, path.end(), [&,currentX = start.x()]() mutable
-	{
-		Coord coord{ currentX, start.y() + verticalDistance };
-		currentX += horizontalStep;
-		return coord;
-	});
-
-	return path;
+	return result;
 }
 
-std::vector<Coord> LowerDoglegRouter::perform(const Coord& a, const Coord& b) const
+DoglegSegment LowerDoglegRouter::perform(const Coord& a, const Coord& b) const
 {
-	auto compare = [](const Coord& a, const Coord& b)
+	auto compareVertical = [](const Coord& a, const Coord& b)
 		{
 			return a.y() < b.y();
 		};
-	const auto& [start, end] = std::minmax(a, b, compare);
-	const auto verticalDistance = end.y() - start.y();
-	const auto horizontalDistance = end.x() - start.x();
 
-	const int verticalStep {1};
-	const int horizontalStep = horizontalDistance > 0 ? 1 : -1;
+	auto compareHorizontal = [](const Coord& a, const Coord& b)
+		{
+			return a.x() < b.x();
+		};
 
-	const size_t pathSize = 1 + std::abs(verticalDistance) + std::abs(horizontalDistance);
+	const auto& [startV, endV] = std::minmax(a, b, compareVertical);
+	const auto& [startH, endH] = std::minmax(a, b, compareHorizontal);
 
-	std::vector<Coord> path(pathSize);
+	DoglegSegment result;
+	result.verticalSegment = { {endV.x(),startV.y()}, endV };
+	result.horizontalSegment = { {startH.x(),startV.y()}, { endH.x(), startV.y() } };
 
-	auto it = std::generate_n(path.begin(), std::abs(horizontalDistance), [&,currentX = start.x()]() mutable
-	{
-		Coord coord{ currentX, start.y() };
-		currentX += horizontalStep;
-		return coord;
-	});
-
-	std::generate(it, path.end(), [&,currentX = start.x() + horizontalDistance, currentY = start.y()]() mutable
-	{
-		Coord coord{ currentX, currentY};
-		currentY += verticalStep;
-		return coord;
-	});
-
-	return path;
+	return result;
 }
 }

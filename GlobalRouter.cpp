@@ -77,7 +77,8 @@ namespace in
 		for (size_t i = 0; i < m_twoPointNets.size(); ++i)
 		{
 			const auto& net = m_twoPointNets[i];
-			m_doglegSolutions[i].path = createDoglegRouter(m_doglegTypes[i])->route(net);
+			m_doglegSolutions[i].endpoints = { m_twoPointNets[i].second[0],
+            m_twoPointNets[i].second[1] };
 			m_doglegSolutions[i].name = net.first;
 			m_doglegSolutions[i].type = m_doglegTypes[i];
 		}
@@ -87,10 +88,16 @@ namespace in
 	{
 		for (const auto& solution : m_doglegSolutions)
 		{
-			for(const auto& coord : solution.path)
+			const auto dogleg = route(solution);
+			for (int i = dogleg.horizontalSegment.first.x(); i <= dogleg.horizontalSegment.second.x(); ++i)
 			{
-				const auto index = m_globalGrid.getIndex(coord);
-				m_grid.cells[index].overallCongestion++;
+				auto& cell = m_grid.horizontalCells[m_globalGrid.getIndexHorizontal({i, solution.endpoints.first.y()})];
+				cell.congestion++;
+			}
+			for (int i = dogleg.verticalSegment.first.y(); i <= dogleg.verticalSegment.second.y(); ++i)
+			{
+				auto& cell = m_grid.verticalCells[m_globalGrid.getIndexVertical({solution.endpoints.first.x(), i})];
+				cell.congestion++;
 			}
 		}
 	}
@@ -143,6 +150,20 @@ namespace in
 	void GlobalRouter::performSAParSpacePartitioned(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces)
 	{
 		m_solver = std::make_unique<SpacePartitionedSA>(
+			m_globalGrid,
+			m_globalGrid.getGrid(),
+			m_doglegSolutions,
+			initialTemperature,
+			coolingRate,
+			0.001f,
+			maxIterations,
+			spaces);
+		m_doglegSolutions = m_solver->optimize();
+	}
+
+	void GlobalRouter::performSAParSpacePartitionedOnGPU(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces)
+	{
+		m_solver = std::make_unique<SpacePartitionedGPUSA>(
 			m_globalGrid,
 			m_globalGrid.getGrid(),
 			m_doglegSolutions,

@@ -31,10 +31,10 @@ namespace in
 
         std::ranges::sort(sortedSolutions,[](const auto& netSolA, const auto& netSolB)
 		{
-			return netSolA.path.size() > netSolB.path.size();
+			return manhattanDistance(netSolA.endpoints) > manhattanDistance(netSolA.endpoints);
 		});
 		
-		const size_t indexRange = std::sqrt(m_independentSpacesSize);
+		const auto indexRange = static_cast<size_t>(std::sqrt(m_independentSpacesSize));
 
 		for(size_t mask = 0; mask < m_independentSpacesSize; ++mask)
 		{
@@ -57,7 +57,7 @@ namespace in
 		auto globalBestSolutions = m_initialSolutions;
 		float globalBestPenalty = std::numeric_limits<float>::max();
 
-		#pragma omp parallel shared(m_spaces, globalBestPenalty, globalBestSolutions)
+		#pragma omp parallel shared(globalBestPenalty, globalBestSolutions)
 		{
 			float temperature = m_initialTemperature;
 			thread_local const auto threadNum = omp_get_thread_num();
@@ -66,7 +66,7 @@ namespace in
 			thread_local auto localGrid = m_startingGrid; 
 			thread_local auto localSolutions = m_spaces[threadNum];
 			const auto threadCount = m_independentSpacesSize;
-			const size_t startRange = std::sqrt(threadCount);
+			const size_t startRange = static_cast<size_t>(std::sqrt(threadCount));
 			addSolutions(localGrid,localSolutions);
 			while(temperature > m_eps)
 			{
@@ -79,7 +79,6 @@ namespace in
 					auto candidateSolution = previousSolution;
 
 					flipDoglegType(candidateSolution);
-					route(candidateSolution);
 
 					const float newPenalty = ripUpAndReroute(localGrid, previousSolution, candidateSolution);
 					const float deltaPenalty = newPenalty - localCurrentPenalty;

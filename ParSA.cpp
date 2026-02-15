@@ -2,6 +2,8 @@
 
 #include <omp.h>
 
+#include <limits>
+
 namespace in
 {
     ParSA::ParSA(
@@ -48,7 +50,6 @@ namespace in
 					auto candidateSolution = previousSolution;
 
 					flipDoglegType(candidateSolution);
-					route(candidateSolution);
 
 					const float newPenalty = ripUpAndReroute(localGrid, previousSolution, candidateSolution);
 					const float deltaPenalty = newPenalty - localCurrentPenalty;

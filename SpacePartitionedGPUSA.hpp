@@ -2,8 +2,6 @@
 
 #include "SpacePartitionedSA.hpp"
 
-#include <boost/compute.hpp>
-
 namespace in
 {
     class SpacePartitionedGPUSA : public SpacePartitionedSA

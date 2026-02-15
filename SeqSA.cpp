@@ -20,46 +20,79 @@ namespace in
 	{
 	}
 
-	void SeqSA::addSolution(GlobalRoutingCells& grid, const NetSolution& solution)
+	void SeqSA::addSolution(GlobalRoutingCells &grid, const DoglegSegment& solution)
 	{
-		for (const auto& coord : solution.path)
-		{
-			const auto index = m_globalGrid.getIndex(coord);
-			const auto oldCellPenalty = calculateCellPenalty(grid.cells[index]);
-			grid.cells[index].overallCongestion++;
-			const auto newCellPenalty = calculateCellPenalty(grid.cells[index]);
-			grid.penalty += newCellPenalty - oldCellPenalty;
-		}
+        const auto startVerticalIndex = solution.verticalSegment.first.y();
+        const auto endVerticalIndex = solution.verticalSegment.second.y();
+
+        for (auto i = startVerticalIndex; i <= endVerticalIndex; ++i)
+        {
+            const auto index = m_globalGrid.getIndexVertical({ solution.verticalSegment.first.x(), i });
+            const auto oldCellPenalty = calculateCellPenalty(grid.verticalCells[index]);
+            grid.verticalCells[index].congestion++;
+            const auto newCellPenalty = calculateCellPenalty(grid.verticalCells[index]);
+            grid.penalty += newCellPenalty - oldCellPenalty;
+        }
+
+        const auto startHorizontalIndex = solution.horizontalSegment.first.x();
+        const auto endHorizontalIndex = solution.horizontalSegment.second.x();
+
+        for (auto i = startHorizontalIndex; i <= endHorizontalIndex; ++i)
+        {
+            const auto index = m_globalGrid.getIndexHorizontal({ i, solution.horizontalSegment.first.y() });
+            const auto oldCellPenalty = calculateCellPenalty(grid.horizontalCells[index]);
+            grid.horizontalCells[index].congestion++;
+            const auto newCellPenalty = calculateCellPenalty(grid.horizontalCells[index]);
+            grid.penalty += newCellPenalty - oldCellPenalty;
+        }
+        
 	}
-	void SeqSA::substractSolution(GlobalRoutingCells& grid, const NetSolution& solution)
+
+	void SeqSA::substractSolution(GlobalRoutingCells &grid, const DoglegSegment& solution)
 	{
-		for (const auto& coord : solution.path)
-		{
-			const auto index = m_globalGrid.getIndex(coord);
-			const auto oldCellPenalty = calculateCellPenalty(grid.cells[index]);
-			grid.cells[index].overallCongestion--;
-			const auto newCellPenalty = calculateCellPenalty(grid.cells[index]);
-			grid.penalty += newCellPenalty - oldCellPenalty;
-		}
+      const auto startVerticalIndex = solution.verticalSegment.first.y();
+      const auto endVerticalIndex = solution.verticalSegment.second.y();
+
+      for (auto i = startVerticalIndex; i <= endVerticalIndex; ++i)
+      {
+        const auto index = m_globalGrid.getIndexVertical({ solution.verticalSegment.first.x(), i });
+        const auto oldCellPenalty = calculateCellPenalty(grid.verticalCells[index]);
+        grid.verticalCells[index].congestion--;
+        const auto newCellPenalty = calculateCellPenalty(grid.verticalCells[index]);
+        grid.penalty += newCellPenalty - oldCellPenalty;
+      }
+
+      const auto startHorizontalIndex = solution.horizontalSegment.first.x();
+      const auto endHorizontalIndex = solution.horizontalSegment.second.x();
+
+      for (auto i = startHorizontalIndex; i <= endHorizontalIndex; ++i)
+      {
+        const auto index =
+          m_globalGrid.getIndexHorizontal({ i, solution.horizontalSegment.first.y() });
+        const auto oldCellPenalty = calculateCellPenalty(grid.horizontalCells[index]);
+        grid.horizontalCells[index].congestion--;
+        const auto newCellPenalty = calculateCellPenalty(grid.horizontalCells[index]);
+        grid.penalty += newCellPenalty - oldCellPenalty;
+      }
 	}
 
 	void SeqSA::addSolutions(GlobalRoutingCells& grid, const GlobalSolutions& solutions)
 	{
 		for (const auto& solution : solutions)
 		{
-			addSolution(grid, solution);
+			addSolution(grid, route(solution));
 		}
 	}
 
 	float SeqSA::calculateCellPenalty(const GlobalRoutingCell& cell) const
 	{
-		return static_cast<float>(std::pow(cell.overallCongestion, 2));
+		return static_cast<float>(std::pow(cell.congestion, 2));
 	}
 
 	float SeqSA::ripUpAndReroute(GlobalRoutingCells& grid, const NetSolution& oldSolution, const NetSolution& newSolution)
 	{
-		substractSolution(grid, oldSolution);
-		addSolution(grid, newSolution);
+		substractSolution(grid, route(oldSolution));
+		addSolution(grid, route(newSolution));
 
 		return grid.penalty;
 	}

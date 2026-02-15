@@ -24,15 +24,14 @@ namespace in
 
 	struct GlobalRoutingCell
 	{
-		int horizontalCongestion{ 0 };
-		int verticalCongestion{ 0 };
-		int overallCongestion{ 0 };
+		int congestion{ 0 };
 		box_int box{ {0,0},{0,0} };
 	};
 
 	struct GlobalRoutingCells
 	{
-		std::vector<GlobalRoutingCell> cells;
+		std::vector<GlobalRoutingCell> horizontalCells;
+		std::vector<GlobalRoutingCell> verticalCells;
 		float penalty{ 0.0f };
 	};
 
@@ -54,7 +53,8 @@ namespace in
 		[[nodiscard]] std::pair<int,int> getCellCapacity() const;
 		const GlobalRoutingCells& getGrid() const;
 		[[nodiscard]] point_int getCoordinates(point_int point) const;
-		[[nodiscard]] int getIndex(point_int point) const;
+        [[nodiscard]] int getIndexHorizontal(point_int point) const;
+        [[nodiscard]] int getIndexVertical(point_int point) const;
 		[[nodiscard]] std::vector<int> getNeighbours(int i) const;
 	private:
 		void calculateCellCapacity();
@@ -70,7 +70,6 @@ namespace in
 		std::vector<def::Net> m_designNets;
 		int m_cellHorizontalCapacity{ 0 };
 		int m_cellVerticalCapacity{ 0 };
-		int m_overallCellCapacity{ 0 };
 		int m_maxX{ 0 };
 		int m_maxY{ 0 };
 		GlobalRoutingCells m_grid;

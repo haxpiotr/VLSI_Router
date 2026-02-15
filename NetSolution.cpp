@@ -45,9 +45,15 @@ namespace in
 	}
 	
 
-	void route(NetSolution& solution)
+	DoglegSegment route(const NetSolution& solution)
 	{
-		solution.path = createDoglegRouter(solution.type)->route(
-			{ solution.name, {solution.path.front(), solution.path.back()} });
+          return createDoglegRouter(solution.type)
+            ->route({ solution.name, { solution.endpoints.first, solution.endpoints.second} });
+	}
+
+	int manhattanDistance(const Segment& segment)
+	{ 
+		const auto &[start, end] = segment;
+		return std::abs(start.x() - end.x()) + std::abs(start.y() - end.y());
 	}
 }
