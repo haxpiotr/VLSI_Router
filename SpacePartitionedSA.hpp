@@ -20,8 +20,7 @@ namespace in
     
     protected:
         void initializeIndependentSpaces();
-    private:
-        size_t m_independentSpacesSize{0};
+        size_t m_independentSpacesSize{ 0 };  
         std::vector<GlobalSolutions> m_spaces;
     };
 }

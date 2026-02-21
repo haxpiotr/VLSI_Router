@@ -497,4 +497,15 @@ namespace in
 		return m_grid.horizontalCells.size();
 	}
 
+	int GlobalRoutingGrid::getCols() const
+	{
+		return m_cols;
+	}
+
+	int GlobalRoutingGrid::getRows() const
+	{
+		return m_rows;
+	}
+
+
 }

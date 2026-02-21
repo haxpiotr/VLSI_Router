@@ -19,88 +19,100 @@ namespace in
                                 coolingRate,
                                 eps,
                                 maxIterations,
-                                independentSpaces){}
+                                independentSpaces)
+    {
+    }
 
     GlobalSolutions SpacePartitionedGPUSA::optimize()
     {
-        std::cout << "Calculating manhattan lengths for all nets on GPU..." << std::endl;
         compute::device device = compute::system::default_device();
         compute::context context(device);
         compute::command_queue queue(context, device);
-        compute::vector<int> manhattanLengths(m_initialSolutions.size(), context);
-        std::vector<int> hostManhattanLengths(m_initialSolutions.size());
-        compute::vector<compute::int2_> deviceNetStarts(m_initialSolutions.size(), context);
-        compute::vector<compute::int2_> deviceNetEnds(m_initialSolutions.size(), context);
-        std::vector<int> netStarts(m_initialSolutions.size() * 2);
-        std::vector<int> netEnds(m_initialSolutions.size() * 2);
 
-        std::generate(netStarts.begin(), netStarts.end(), [this, n = 0]() mutable
-            {
-                if (n % 2)
-                    return m_initialSolutions[n++ / 2].endpoints.first.x();
-                else
-                    return m_initialSolutions[n++ / 2].endpoints.first.y();
-            });
+        const auto solutionsSize = m_initialSolutions.size();
 
-        std::cout << "--- GPU Manhattan lengths calculation ---" << std::endl;
+        compute::vector<compute::int2_> deviceNetStarts(solutionsSize, context);
+        compute::vector<compute::int2_> deviceNetEnds(solutionsSize, context);
+        std::vector<compute::int2_> netStarts(solutionsSize);
+        std::vector<compute::int2_> netEnds(solutionsSize);
 
-        std::generate(netEnds.begin(), netEnds.end(), [this, n = 0]() mutable
-            {
-                if (n % 2)
-                    return m_initialSolutions[n++ / 2].endpoints.second.x();
-                else
-                    return m_initialSolutions[n++ / 2].endpoints.second.y();
-            });
+        const auto& sortedSolution = m_spaces[0];
+        for(int i = 0; i < solutionsSize; ++i)
+        {
+            netStarts[i] = { sortedSolution[i].endpoints.first.x(), sortedSolution[i].endpoints.first.y()};
+            netEnds[i] = { sortedSolution[i].endpoints.second.x(), sortedSolution[i].endpoints.second.y() };
+        }
 
+        std::vector<GlobalRoutingCells> grids(m_independentSpacesSize, m_startingGrid);
 
-        compute::copy(reinterpret_cast<compute::int2_*>(netStarts.data()), reinterpret_cast<compute::int2_*>(netStarts.data()) + m_initialSolutions.size(), deviceNetStarts.begin(), queue);
-        compute::copy(reinterpret_cast<compute::int2_*>(netEnds.data()), reinterpret_cast<compute::int2_*>(netEnds.data()) + m_initialSolutions.size(), deviceNetEnds.begin(), queue);
+        std::vector<float> penalties(m_independentSpacesSize);
+        compute::vector<float> devicePenalties(m_independentSpacesSize, context);
+        for(int i = 0; i < m_independentSpacesSize; ++i)
+        {
+            addSolutions(grids[i], m_spaces[i]);
+            penalties[i] = grids[i].penalty;
+        }
+        compute::copy(penalties.begin(), penalties.end(), devicePenalties.begin(), queue);
+        compute::copy(netStarts.begin(), netStarts.end(), deviceNetStarts.begin(), queue);
+        compute::copy(netEnds.begin(), netEnds.end(), deviceNetEnds.begin(), queue);
 
-        BOOST_COMPUTE_FUNCTION(int, manhattanLength, (compute::int2_ start, compute::int2_ end),
-            {
-                return abs(start.x - end.x) + abs(start.y - end.y);
-            });
+        const auto horizontalGridSize = m_startingGrid.horizontalCells.size();
+        const auto verticalGridSize = m_startingGrid.verticalCells.size();
+        const auto horizontalGridsSize = horizontalGridSize * m_independentSpacesSize;
+        const auto verticalGridsSize = verticalGridSize * m_independentSpacesSize;
+        const auto doglegTypesSize = solutionsSize * m_independentSpacesSize;
 
-        compute::transform(
-            deviceNetStarts.begin(), deviceNetStarts.end(),
-            deviceNetEnds.begin(),
-            manhattanLengths.begin(),
-            manhattanLength,
-            queue
-        );
+        std::vector<int> horizontalGrids(horizontalGridsSize);
+        for(int i = 0; i < horizontalGridsSize; ++i)
+        {
+            horizontalGrids[i] = grids[i / horizontalGridSize].horizontalCells[i % horizontalGridSize].congestion;
+        }
+        compute::vector<int> deviceHorizontalGrids(horizontalGridsSize, context);
+        compute::copy(horizontalGrids.begin(), horizontalGrids.end(), deviceHorizontalGrids.begin(), queue);
 
-        compute::sort_by_key(manhattanLengths.begin(), manhattanLengths.end(), deviceNetStarts.begin(), queue);
+        std::vector<int> verticalGrids(verticalGridsSize);
+        for (int i = 0; i < verticalGridsSize; ++i)
+        {
+            verticalGrids[i] = grids[i / verticalGridSize].verticalCells[i % verticalGridSize].congestion;
+        }
+        compute::vector<int> deviceVerticalGrids(verticalGridsSize, context);
+        compute::copy(verticalGrids.begin(), verticalGrids.end(), deviceVerticalGrids.begin(), queue);
 
-        compute::copy(manhattanLengths.begin(), manhattanLengths.end(), hostManhattanLengths.begin(), queue);
+        std::vector<char> doglegTypes(doglegTypesSize);
+        for (int i = 0; i < doglegTypesSize; ++i)
+        {
+            doglegTypes[i] = static_cast<char>(m_spaces[i / solutionsSize][i % solutionsSize].type);
+        }
+        compute::vector<char> deviceDoglegTypes(doglegTypesSize, context);
+        compute::copy(doglegTypes.begin(), doglegTypes.end(), deviceDoglegTypes.begin(), queue);
 
-        queue.finish();
         const char source[] = BOOST_COMPUTE_STRINGIZE_SOURCE(
-            float getCellPenalty(int* grid, int index)
+            float getCellPenalty(int* grid, uint index)
             {
                 return grid[index] * grid[index];
             }
-            float getGridPenalty(int* grid, int size)
+            float getGridPenalty(int* grid, uint size)
             {
                 float penalty = 0.0f;
-                for (int i = 0; i < size; ++i)
+                for (uint i = 0; i < size; ++i)
                 {
                     penalty += getCellPenalty(grid, i);
                 }
                 return penalty;
             }
-            int getHorizantalIndex(int x, int y, int cols)
+            uint getHorizantalIndex(int x, int y, uint cols)
             {
-                return y * cols + x;
+                return (uint)y * (uint)cols + x;
             }
-            int getVerticalIndex(int x, int y, int rows)
+            uint getVerticalIndex(int x, int y, uint rows)
             {
-                return x * rows + y;
+                return (uint)x * rows + (uint)y;
             }
             // Returns difference between penalty after adding segment to the grid and penalty before adding it
-            float addSegment(int* grid, int start, int end)
+            float addSegment(int* grid, uint start, uint end)
             {
                 float penalty = 0.0f;
-                for (int i = start; i <= end; ++i)
+                for (uint i = start; i <= end; ++i)
                 {
                     float oldPenalty = getCellPenalty(grid, i);
                     grid[i] += 1;
@@ -110,10 +122,10 @@ namespace in
             }
 
             // Returns difference between penalty after substracting segment from the grid and penalty before substracting it
-            float substractSegment(int* grid, int start, int end)
+            float substractSegment(int* grid, uint start, uint end)
             {
                 float penalty = 0.0f;
-                for (int i = start; i <= end; ++i)
+                for (uint i = start; i <= end; ++i)
                 {
                     float oldPenalty = getCellPenalty(grid, i);
                     grid[i] -= 1;
@@ -121,7 +133,7 @@ namespace in
                 }
                 return penalty;
             }
-            void getVerticalSegment(int2 netStart, int2 netEnd, int type, int2* start, int2* end)
+            void getVerticalSegment(int2 netStart, int2 netEnd, char type, int2* start, int2* end)
             {
                 int startHX = min(netStart.x, netEnd.x);
                 int endHX = max(netStart.x, netEnd.x);
@@ -147,7 +159,7 @@ namespace in
                     end->y = endVY;
                 }
             }
-            void getHorizontalSegment(int2 netStart, int2 netEnd, int type, int2* start, int2* end)
+            void getHorizontalSegment(int2 netStart, int2 netEnd, char type, int2* start, int2* end)
             {
                 int startHX = min(netStart.x, netEnd.x);
                 int endHX = max(netStart.x, netEnd.x);
@@ -170,7 +182,7 @@ namespace in
                 }
             }
             // Returns solution penalty after adding it to the grids
-            float addSolution(int* horizontalGrid, int* verticalGrid, int cols, int rows, int2 netStart, int2 netEnd, int type)
+            float addSolution(int* horizontalGrid, int* verticalGrid, uint cols, uint rows, int2 netStart, int2 netEnd, char type)
             {
                 int2 horizontalStart, horizontalEnd, verticalStart, verticalEnd;
                 getHorizontalSegment(netStart, netEnd, type, &horizontalStart, &horizontalEnd);
@@ -181,7 +193,7 @@ namespace in
                 return penalty;
             }
             // Returns difference between penalty after substracting solution from the grids and penalty before substracting it
-            float substractSolution(int* horizontalGrid, int* verticalGrid, int cols, int rows, int2 netStart, int2 netEnd, int type)
+            float substractSolution(int* horizontalGrid, int* verticalGrid, uint cols, uint rows, int2 netStart, int2 netEnd, char type)
             {
                 int2 horizontalStart, horizontalEnd, verticalStart, verticalEnd;
                 getHorizontalSegment(netStart, netEnd, type, &horizontalStart, &horizontalEnd);
@@ -196,23 +208,23 @@ namespace in
             // if 0 no difference
             // if negative new solution is better
             // if positive old solution is better
-            float ripUpAndReroute(int* horizontalGrid, int* verticalGrid, int cols, int rows, int2 netStart, int2 netEnd, int oldType, int newType)
+            float ripUpAndReroute(int* horizontalGrid, int* verticalGrid, uint cols, uint rows, int2 netStart, int2 netEnd, char oldType, char newType)
             {
+                
                 float penaltyDiffAfterSubstraction = substractSolution(horizontalGrid, verticalGrid, cols, rows, netStart, netEnd, oldType);
                 float penaltyDiffAfterAddition = addSolution(horizontalGrid, verticalGrid, cols, rows, netStart, netEnd, newType);
                 return penaltyDiffAfterSubstraction + penaltyDiffAfterAddition;
             }
 
-
-            uint splitmix32(uint x) {
+            uint splitmix32(uint x) 
+            {
                 x += 0x9E3779B9u;
                 x = (x ^ (x >> 16)) * 0x85EBCA6Bu;
                 x = (x ^ (x >> 13)) * 0xC2B2AE35u;
                 return x ^ (x >> 16);
             }
 
-
-            int rand(int* seed) // 1 <= *seed < m
+            int randi(int* seed) // 1 <= *seed < m
             {
                 int const a = 16807; //ie 7**5
                 int const m = 2147483647; //ie 2**31-1
@@ -223,83 +235,155 @@ namespace in
                 return(*seed);
             }
 
+            uint randu(uint* seed) // 1 <= *seed < m
+            {
+                const uint a = 16807; //ie 7**5
+                const uint m = 4294967295; //ie 2**32-1
+                long long x = (long long)(*seed);
+                x = (a * x) % m;
+
+                *seed = (uint)x;
+                return(*seed);
+            }
+
             // form 0 to 1
             float randf(int* seed) // 1 <= *seed < m
             {
-                int r = rand(seed);
-
+                int r = randi(seed);
                 return ((float)r * (1.0f / 2147483647.0f) + 1.0f) / 2.0f;
             }
 
-            int getUniform(int* seed, int min, int max)
+            int getUniI(int* seed, int min, int max)
             {
-                return min + rand(seed) % (max - min + 1);
+                return min + randi(seed) % (max - min + 1);
             }
 
-            __kernel void uniformOnGpu(
-                __global int* uniformFromGpu,
-                int timeSeed,
-                int size)
+            uint getUniU(uint* seed, uint min, uint max)
             {
-                int id = get_global_id(0);
-                if (id > size)
-                {
-                    return;
-                }
-                int seed = splitmix32((uint)timeSeed ^ (uint)id) | 1u;
-                uniformFromGpu[id] = getUniform(&seed, 0, 255);
+                return min + randu(seed) % (max - min + 1);
             }
 
-            __kernel void uniformFOnGpu(
-                __global float* uniformFromGpu,
-                int timeSeed,
-                int size)
-            {
-                int id = get_global_id(0);
-                if (id > size)
-                {
-                    return;
-                }
-                int seed = splitmix32((uint)timeSeed ^ (uint)id) | 1u;
-                uniformFromGpu[id] = randf(&seed);
-            }
-                        
             __kernel void simulatedAnnealing(
                 __global const int2* netStarts,
                 __global const int2* netEnds,
-                __global int* doglegTypes,
-                int netCount,
-                __global const int* horizontalGrid,
-                __global const int* verticalGrid,
-                int cols,
-                int rows,
-                float initialTemperature,
-                float coolingRate,
-                float eps,
-                int maxIterations,
-                __global int* uniformFromGpu)
+                __global char* doglegTypes,
+                __global int* horizontalGrid,
+                __global int* verticalGrid,
+                __global float* penalties,
+                const float initialTemperature,
+                const float coolingRate,
+                const float eps,
+                const uint maxIterations,
+                const uint timeSeed,
+                const uint netCount,
+                const uint cols,
+                const uint rows,
+                const uint spaces)
             {
-                int id = get_global_id(0);
-                uniformFromGpu[id] = getUniform(&id, 0, 255);
+                uint id = get_global_id(0);
+                uint threadCount = get_global_size(0);
+
+                uint seed = splitmix32(timeSeed ^ id) | 1u;
+                int seedf = splitmix32(timeSeed ^ id) | 1u;
+                
+                const uint gridSize = cols * rows;
+                const uint gridStartIndex = gridSize * id;
+                __global int* localHorizontalGrid = horizontalGrid + gridStartIndex;
+                __global int* localVerticalGrid = verticalGrid + gridStartIndex;
+                                
+                const uint solStartIndex = id * netCount;
+                __global char* localDoglegTypes = doglegTypes + solStartIndex;
+
+                float currentPenalty = penalties[id];
+                float temperature = initialTemperature;
+
+                const uint spaceIndex = sqrt((float)spaces);
+                
+                while (temperature > eps)
+                {
+                    for (uint i = 0; i < maxIterations/ threadCount; ++i)
+                    {
+                        uint flipIndex = getUniU(&seed, spaceIndex, netCount - 1);
+                        
+                        char oldType = localDoglegTypes[flipIndex];
+                        char newType = 1 - oldType;
+                        float penaltyDiff = ripUpAndReroute(localHorizontalGrid,
+                            localVerticalGrid,
+                            cols,
+                            rows,
+                            netStarts[flipIndex],
+                            netEnds[flipIndex],
+                            oldType,
+                            newType);
+
+                        if (penaltyDiff < 0 || exp(-penaltyDiff / temperature) > randf(&seedf))
+                        {
+                            localDoglegTypes[flipIndex] = newType;
+                            currentPenalty += penaltyDiff;
+                        }
+                        else
+                        {
+                            ripUpAndReroute(localHorizontalGrid,
+                                localVerticalGrid,
+                                cols,
+                                rows,
+                                netStarts[flipIndex],
+                                netEnds[flipIndex],
+                                newType,
+                                oldType);
+                        }
+                    }
+                    
+                    temperature*= coolingRate;
+                }
+                penalties[id] = currentPenalty;
             }
         );
-        const int uniformSize = 1024;
-        compute::vector<float> uniformOnGpu(uniformSize, context);
-        std::array<float, uniformSize> uniformOnHost{};
+
         compute::program program = compute::program::create_with_source(source, context);
         try
         {
-            const auto timeSeed = static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+            const auto timeSeed = static_cast<unsigned int>(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+            
             program.build();
-            compute::kernel kernel(program, "uniformFOnGpu");
-            kernel.set_arg(0, uniformOnGpu);
-            kernel.set_arg(1, timeSeed);
-            kernel.set_arg(2, uniformSize);
-            queue.enqueue_1d_range_kernel(kernel, 0, uniformSize, 0);
-            compute::copy(uniformOnGpu.begin(), uniformOnGpu.end(), uniformOnHost.begin(), queue);
-            for (auto i : uniformOnHost)
+
+            compute::kernel kernel(program, "simulatedAnnealing");
+            kernel.set_arg(0, deviceNetStarts);
+            kernel.set_arg(1, deviceNetEnds);
+            kernel.set_arg(2, deviceDoglegTypes);
+            kernel.set_arg(3, deviceHorizontalGrids);
+            kernel.set_arg(4, deviceVerticalGrids);
+            kernel.set_arg(5, devicePenalties);
+            kernel.set_arg(6, m_initialTemperature);
+            kernel.set_arg(7, m_coolingRate);
+            kernel.set_arg(8, m_eps);
+            kernel.set_arg(9, static_cast<unsigned int>(m_maxIterations));
+            kernel.set_arg(10,timeSeed);
+            kernel.set_arg(11, static_cast<unsigned int>(solutionsSize));
+            kernel.set_arg(12, static_cast<unsigned int>(m_globalGrid.getCols()));
+            kernel.set_arg(13, static_cast<unsigned int>(m_globalGrid.getRows()));
+            kernel.set_arg(14, static_cast<unsigned int>(m_spaces.size()));
+            queue.enqueue_1d_range_kernel(kernel, 0, m_independentSpacesSize, 0);
+            std::vector<float> hostPenalties(m_independentSpacesSize);
+            compute::copy(devicePenalties.begin(), devicePenalties.end(), hostPenalties.begin(), queue);
+            compute::copy(deviceHorizontalGrids.begin(), deviceHorizontalGrids.end(), horizontalGrids.begin(), queue);
+            compute::copy(deviceVerticalGrids.begin(), deviceVerticalGrids.end(), verticalGrids.begin(), queue);
+
+            for(int i = 0; i < hostPenalties.size(); ++i)
             {
-                std::cout << i << " ";;
+                std::cout << "Space " << i << " penalty: " << hostPenalties[i] << std::endl;
+                float recalculatedPenalty = 0.0f;
+                for (int j = 0; j < horizontalGridSize; ++j)
+                {
+                  recalculatedPenalty += horizontalGrids[i * horizontalGridSize + j]
+                                         * horizontalGrids[i * horizontalGridSize + j];
+                }
+                for (int j = 0; j < verticalGridSize; ++j)
+                {
+                    recalculatedPenalty += verticalGrids[i * verticalGridSize + j]
+                        * verticalGrids[i * verticalGridSize + j];
+                }
+                std::cout << "Space " << i << " recalculated penalty: " << recalculatedPenalty << std::endl;
             }
 
         }
@@ -308,7 +392,6 @@ namespace in
             std::cerr << "OpenCL error: " << e.what() << std::endl;
             std::cout << program.build_log() << std::endl;
         }
-
 
         return {};
     }

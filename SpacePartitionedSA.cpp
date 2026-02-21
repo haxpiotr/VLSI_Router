@@ -33,6 +33,8 @@ namespace in
 		{
 			return manhattanDistance(netSolA.endpoints) > manhattanDistance(netSolA.endpoints);
 		});
+
+		//sortedSolutions = m_initialSolutions;
 		
 		const auto indexRange = static_cast<size_t>(std::sqrt(m_independentSpacesSize));
 
@@ -45,7 +47,6 @@ namespace in
 				if(iSet)
 				{
 					flipDoglegType(space[i]);
-					route(space[i]);
 				}
 			}
 			m_spaces.emplace_back(std::move(space));

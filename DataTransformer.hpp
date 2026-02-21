@@ -56,6 +56,8 @@ namespace in
         [[nodiscard]] int getIndexHorizontal(point_int point) const;
         [[nodiscard]] int getIndexVertical(point_int point) const;
 		[[nodiscard]] std::vector<int> getNeighbours(int i) const;
+		[[nodiscard]] int getCols() const;
+		[[nodiscard]] int getRows() const;
 	private:
 		void calculateCellCapacity();
 		int m_cols{ 0 };
