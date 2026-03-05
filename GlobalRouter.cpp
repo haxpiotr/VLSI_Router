@@ -15,13 +15,6 @@ namespace in
 		m_placedPins = m_dataTransformer.getPlacedPins();
 		m_globalGrid = m_dataTransformer.getGlobalGrid(cols, rows);
 		m_grid = m_globalGrid.getGrid();
-		auto key_comparator = [](const auto& a, const auto& b)
-			{
-				return a.compIdPair < b.compIdPair;
-			};
-
-		std::sort(std::execution::par, m_placedPins.begin(), m_placedPins.end(), key_comparator);
-
 		m_netlist = m_globalGrid.getNetlist(m_placedPins);
 	}
 
@@ -66,37 +59,59 @@ namespace in
 			m_twoPointNets.push_back(net);
 		}
 
+		std::ranges::sort(m_twoPointNets, [](const auto& netA, const auto& netB)
+			{
+				const auto distanceA = manhattanDistance({ netA.second[0], netA.second[1] });
+				const auto distanceB = manhattanDistance({ netB.second[0], netB.second[1] });
+				return distanceA > distanceB;
+			});
+
+		for (const auto& net : m_twoPointNets)
+		{
+			std::cout << "Net " << net.first << " has manhattan distance " << manhattanDistance({ net.second[0], net.second[1] }) << std::endl;
+		}
 		m_twoPointNets.shrink_to_fit();
 	}
 
-	void GlobalRouter::routeAllDoglegNets()
+	void GlobalRouter::readAllDoglegNets()
 	{
 		m_doglegSolutions.reserve(m_twoPointNets.size());
-		m_doglegSolutions.resize(m_twoPointNets.size());
 
 		for (size_t i = 0; i < m_twoPointNets.size(); ++i)
 		{
 			const auto& net = m_twoPointNets[i];
-			m_doglegSolutions[i].endpoints = { m_twoPointNets[i].second[0],
-            m_twoPointNets[i].second[1] };
-			m_doglegSolutions[i].name = net.first;
-			m_doglegSolutions[i].type = m_doglegTypes[i];
+			if (manhattanDistance({ net.second[0], net.second[1] }) == 0)
+			{
+				continue;
+			}
+			NetSolution doglegNet;
+			doglegNet.endpoints = { net.second[0], net.second[1] };
+			doglegNet.name = net.first;
+			doglegNet.type = m_doglegTypes[i];
+
+			m_doglegSolutions.emplace_back(std::move(doglegNet));
 		}
 	}
 
-	void GlobalRouter::placeDoglegPathsOnGrid()
+	void GlobalRouter::placeNetsOnGrid()
 	{
-		for (const auto& solution : m_doglegSolutions)
+		for (size_t i = 0; i < m_twoPointNets.size(); ++i)
 		{
-			const auto dogleg = route(solution);
+			const auto& twoPointNet = m_twoPointNets[i];
+			NetSolution twoPointSolution;
+			twoPointSolution.endpoints ={ twoPointNet.second[0], twoPointNet.second[1] };
+			twoPointSolution.name = twoPointNet.first;
+			twoPointSolution.type = m_doglegTypes[i];
+
+			const auto dogleg = route(twoPointSolution);
 			for (int i = dogleg.horizontalSegment.first.x(); i <= dogleg.horizontalSegment.second.x(); ++i)
 			{
-				auto& cell = m_grid.horizontalCells[m_globalGrid.getIndexHorizontal({i, solution.endpoints.first.y()})];
+				auto& cell = m_grid.horizontalCells[m_globalGrid.getIndexHorizontal({i, twoPointSolution.endpoints.first.y()})];
 				cell.congestion++;
 			}
 			for (int i = dogleg.verticalSegment.first.y(); i <= dogleg.verticalSegment.second.y(); ++i)
 			{
-				auto& cell = m_grid.verticalCells[m_globalGrid.getIndexVertical({solution.endpoints.first.x(), i})];
+				auto& cell = m_grid.verticalCells[m_globalGrid.getIndexVertical({ twoPointSolution.endpoints.first.x(), i})];
 				cell.congestion++;
 			}
 		}
@@ -106,8 +121,8 @@ namespace in
 	{
 		readAllTwoPointNets();
 		initializeDoglegTypes();
-		routeAllDoglegNets();
-		placeDoglegPathsOnGrid();
+		readAllDoglegNets();
+		placeNetsOnGrid();
 	}
 
 	const GlobalRoutingCells& GlobalRouter::getGrid() const
@@ -128,6 +143,9 @@ namespace in
 			coolingRate,
 			0.001f,
 			maxIterations);
+
+		std::cout << "Initialized simulated annealing on: " << m_doglegSolutions.size() << std::endl;
+
 		m_doglegSolutions = m_solver->optimize();
 	}
 
@@ -144,6 +162,9 @@ namespace in
 			coolingRate,
 			0.001f,
 			maxIterations);
+
+		std::cout << "Initialized parallel simulated annealing on: " << m_doglegSolutions.size() << std::endl;
+
 		m_doglegSolutions = m_solver->optimize();
 	}
 
@@ -158,6 +179,10 @@ namespace in
 			0.001f,
 			maxIterations,
 			spaces);
+
+		std::cout << "Initialized space partitioned parallel simulated annealing on: " << m_doglegSolutions.size() 
+			<< " solutions in " << spaces << " spaces." << std::endl;
+
 		m_doglegSolutions = m_solver->optimize();
 	}
 
@@ -172,6 +197,10 @@ namespace in
 			0.001f,
 			maxIterations,
 			spaces);
+
+		std::cout << "Initialized space partitioned parallel GPU simulated annealing on: " << m_doglegSolutions.size()
+			<< " solutions in " << spaces << " spaces." << std::endl;
+
 		m_doglegSolutions = m_solver->optimize();
 	}
 }

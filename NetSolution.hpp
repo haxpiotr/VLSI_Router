@@ -1,6 +1,7 @@
 #pragma once
 
 #include "DataTransformer.hpp"
+#include "GeometryTypes.hpp"
 
 #include <random>
 
@@ -9,12 +10,6 @@ namespace in
     using Net = GlobalRoutingGrid::Net;
     using Coord = GlobalRoutingGrid::Coordinates;
 	using Segment = std::pair<Coord, Coord>;
-
-    enum class DoglegType
-    {
-        UPPER,
-        LOWER
-    };
     
     struct DoglegSegment
     {

@@ -3,6 +3,8 @@ project(HighPerformanceICRouter VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+#add_subdirectory(flute)
+
 find_package(OpenMP)
 if (OPENMP_FOUND)
     message(STATUS "OpenMP found")
@@ -51,6 +53,8 @@ set(LIB_HEADERS
     "ParSA.hpp"
     "SpacePartitionedSA.hpp"
     "SpacePartitionedGPUSA.hpp"
+    "MinimumSpanningTree.hpp"
+    "GeometryTypes.hpp"
 )
 
 set(LIB_SOURCES
@@ -64,6 +68,7 @@ set(LIB_SOURCES
     "ParSA.cpp"
     "SpacePartitionedSA.cpp"
     "SpacePartitionedGPUSA.cpp"
+    "MinimumSpanningTree.cpp"
 )
 
 add_library(${PROJECT_NAME} STATIC ${LIB_SOURCES})

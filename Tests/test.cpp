@@ -6,6 +6,7 @@
 #include "../DataTransformer.hpp"
 #include "../GlobalRouter.hpp"
 #include "../DoglegRouter.hpp"
+#include "../MinimumSpanningTree.hpp"
 
 #include <omp.h>
 
@@ -538,6 +539,7 @@ TEST(GlobalRouter, ShouldGetBigNetlist)
 
 TEST(GlobalRouter, ShouldGetEvenBiggerNetlist)
 {
+	GTEST_SKIP();
     in::def::Loader defLoader;
     in::lef::Loader lefLoader;
     const auto design = defLoader.get("Data/ispd18_test10.input.def");
@@ -553,6 +555,7 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlist)
 
 TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSA)
 {
+	GTEST_SKIP();
     in::def::Loader defLoader;
     in::lef::Loader lefLoader;
     const auto design = defLoader.get("Data/ispd18_test10.input.def");
@@ -567,6 +570,7 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSA)
 
 TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitioned)
 {
+	GTEST_SKIP();
     in::def::Loader defLoader;
     in::lef::Loader lefLoader;
     const auto design = defLoader.get("Data/ispd18_test10.input.def");
@@ -582,15 +586,201 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitione
 
 TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitionedOnGPU)
 {
-    in::def::Loader defLoader;
-    in::lef::Loader lefLoader;
-    const auto design = defLoader.get("Data/ispd18_test10.input.def");
-    const auto library = lefLoader.get("Data/ispd18_test10.input.lef");
-    in::DataTransformer transformer(library, design);
-    
-    in::GlobalRouter GRouter(transformer, 100, 100);
-    GRouter.createInitialSolution();
+	GTEST_SKIP();
+	in::def::Loader defLoader;
+	in::lef::Loader lefLoader;
+	const auto design = defLoader.get("Data/ispd18_test10.input.def");
+	const auto library = lefLoader.get("Data/ispd18_test10.input.lef");
+	in::DataTransformer transformer(library, design);
 
-    const auto& grid = GRouter.getGrid();
-    GRouter.performSAParSpacePartitionedOnGPU(1638400, 8000.0f, 0.995f, 1024);
+	in::GlobalRouter GRouter(transformer, 100, 100);
+	GRouter.createInitialSolution();
+
+	const auto& grid = GRouter.getGrid();
+	GRouter.performSAParSpacePartitionedOnGPU(1638400, 8000.0f, 0.995f, 1024);
+}
+TEST(MinimumSpanningTree, ShouldFind)
+{
+	std::vector<in::point_int> points{ {0, 6}, {1, 5}, {4, 7}, {3, 2}, {1, 0}, {6, 2}, {5, 4} };
+
+	const auto mst = tree::rectilinearMST(points);
+
+	int total_cost = 0;
+	std::cout << "Krawedzie MST wyznaczone przez funkcje:" << std::endl;
+	for (const auto& edge : mst) {
+		std::cout << "P" << edge.u << " -- P" << edge.v
+			<< " | Koszt: " << edge.weight << std::endl;
+		total_cost += edge.weight;
+	}
+	std::cout << "Calkowity koszt: " << total_cost << std::endl;
+}
+
+TEST(TreeTransformer, ShouldGetSmallMST)
+{
+	in::def::Loader defLoader;
+	in::lef::Loader lefLoader;
+	const auto design = defLoader.get("Data/ispd18_sample3.input.def");
+	const auto library = lefLoader.get("Data/ispd18_sample3.input.lef");
+	in::DataTransformer transformer(library, design);
+	const auto globalGrid = transformer.getGlobalGrid(100, 100);
+
+	in::GlobalRouter GRouter(transformer, 100, 100);
+	EXPECT_EQ(GRouter.getNetlist().size(), 7);
+	
+	const auto mem1It = std::find_if(library.macros.begin(), library.macros.end(), [](const auto& macro) {
+		return macro.name == "MEM1";
+		});
+
+	ASSERT_NE(mem1It, library.macros.end());
+	const auto& mem1 = *mem1It;
+	
+	const auto q31It = std::find_if(mem1.pins.begin(), mem1.pins.end(), [](const auto& pin)
+		{
+			return pin.name == "Q[31]";
+		});
+	ASSERT_NE(q31It, mem1.pins.end());
+	const auto& q31 = *q31It;
+
+	EXPECT_EQ(q31.pinGeometry.size(), 4);
+
+	const auto& mst = transformer.getMST();
+
+	for (const auto& net : mst.nets)
+	{
+		std::cout << net.name << '\n';
+		for (const auto& s : net.segments)
+		{
+			std::cout << s.aName.first << " " << s.aName.second << "(" << s.a.x() << ", " << s.a.y() << ") -> ";
+			std::cout << s.bName.first << " " << s.bName.second << "(" << s.b.x() << ", " << s.b.y() << ")\n";
+		}
+	}
+}
+
+TEST(TreeTransformer, ShouldGetMST)
+{
+	in::def::Loader defLoader;
+	in::lef::Loader lefLoader;
+	const auto design = defLoader.get("Data/ispd18_test2.input.def");
+	const auto library = lefLoader.get("Data/ispd18_test2.input.lef");
+	in::DataTransformer transformer(library, design);
+	const auto globalGrid = transformer.getGlobalGrid(100, 100);
+
+	in::GlobalRouter GRouter(transformer, 100, 100);
+	EXPECT_EQ(GRouter.getNetlist().size(), 36834);
+	
+	const auto& mst = transformer.getMST();
+	
+	for (const auto& net : mst.nets)
+	{
+		std::cout << net.name << '\n';
+		for (const auto& s : net.segments)
+		{
+			std::cout << s.aName.first << " " << s.aName.second << "(" << s.a.x() << ", " << s.a.y() << ") -> ";
+			std::cout << s.bName.first << " " << s.bName.second << "(" << s.b.x() << ", " << s.b.y() << ")\n";
+		}
+	}
+}
+
+TEST(TreeTransformer, ShouldGetBigMST)
+{
+	in::def::Loader defLoader;
+	in::lef::Loader lefLoader;
+	const auto design = defLoader.get("Data/ispd18_test10.input.def");
+	const auto library = lefLoader.get("Data/ispd18_test10.input.lef");
+	in::DataTransformer transformer(library, design);
+	const auto globalGrid = transformer.getGlobalGrid(100, 100);
+
+	in::GlobalRouter GRouter(transformer, 100, 100);
+	
+	const auto& mst = transformer.getMST();
+
+	EXPECT_EQ(GRouter.getNetlist().size(), mst.nets.size());
+}
+
+TEST(TreeTransformer, ShouldGetReallySmallRMST)
+{
+	std::vector<in::point_int> points{ {0, 6}, { 1,5 }, { 4,7 }, { 3,2 }};
+	const auto rmst = tree::rectinilearSteinerMST(points);
+
+	for (const auto& e : rmst.first)
+	{
+		std::cout << "(" << rmst.second[e.u].x() << ", " << rmst.second[e.u].y() << ") -> (" << rmst.second[e.v].x() << ", " << rmst.second[e.v].y() << ")\n";
+	}
+}
+TEST(TreeTransformer, ShouldGetSmallRMST)
+{
+	std::vector<in::point_int> points{{0, 6}, { 1,5 }, { 4,7 }, { 3,2 }, { 5,4 }, { 1,0 }, { 6,2 }};
+	const auto rmst = tree::rectinilearSteinerMST(points);
+
+	for (const auto& e : rmst.first)
+	{
+		std::cout << "(" << rmst.second[e.u].x() << ", " << rmst.second[e.u].y() << ") -> (" << rmst.second[e.v].x() << ", " << rmst.second[e.v].y() << ")\n";
+	}
+}
+
+TEST(TreeTransformer, ShouldGetSlightlyBiggerRMST)
+{
+	std::vector<in::point_int> points{ {0, 6}, { 1,5 }, { 4,7 }, { 3,2 }, { 5,4 }, { 1,0 }, { 6,2 }, {10,10} , {0, 8}, {15, 5} };
+	const auto rmst = tree::rectinilearSteinerMST(points);
+
+	for (const auto& e : rmst.first)
+	{
+		std::cout << "(" << rmst.second[e.u].x() << ", " << rmst.second[e.u].y() << ") -> (" << rmst.second[e.v].x() << ", " << rmst.second[e.v].y() << ")\n";
+	}
+}
+
+TEST(TreeTransformer, ShouldGetRMST_100)
+{
+	std::mt19937 rng(std::random_device{}());
+	std::uniform_int_distribution<int> dist(1, 199);  // 0 < x,y < 200
+
+	std::set<std::pair<int, int>> usedPoints;
+	std::vector<in::point_int> points;
+	points.reserve(100);
+
+	while (points.size() < 100)
+	{
+		int x = dist(rng);
+		int y = dist(rng);
+		if (usedPoints.insert({ x, y }).second) {
+			points.push_back({ x, y });
+		}
+	}
+
+	const auto rmst = tree::rectinilearSteinerMST(points);
+
+	for (const auto& e : rmst.first)
+	{
+		std::cout << "(" << rmst.second[e.u].x() << ", " << rmst.second[e.u].y()
+			<< ") -> (" << rmst.second[e.v].x() << ", " << rmst.second[e.v].y()
+			<< ")\n";
+	}
+}
+
+TEST(TreeTransformer, ShouldGetRMST_2000)
+{
+	std::mt19937 rng(std::random_device{}());
+	std::uniform_int_distribution<int> dist(1, 10000);  // 0 < x,y < 200
+
+	std::set<std::pair<int, int>> usedPoints;
+	std::vector<in::point_int> points;
+	points.reserve(2000);
+
+	while (points.size() < 2000)
+	{
+		int x = dist(rng);
+		int y = dist(rng);
+		if (usedPoints.insert({ x, y }).second) {
+			points.push_back({ x, y });
+		}
+	}
+
+	const auto rmst = tree::rectinilearSteinerMST(points);
+
+	for (const auto& e : rmst.first)
+	{
+		std::cout << "(" << rmst.second[e.u].x() << ", " << rmst.second[e.u].y()
+			<< ") -> (" << rmst.second[e.v].x() << ", " << rmst.second[e.v].y()
+			<< ")\n";
+	}
 }

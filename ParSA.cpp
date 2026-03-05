@@ -77,7 +77,7 @@ namespace in
 					}
 				}
 			}
-			//std::cout << "Temperature: " << temperature << ", Current Penalty: " << globalBestPenalty << std::endl;
+			std::cout << "Temperature: " << temperature << ", Current Penalty: " << globalBestPenalty << std::endl;
 			temperature *= m_coolingRate;	
 		}
 

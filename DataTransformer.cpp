@@ -5,6 +5,9 @@
 #include <execution>
 #include <fstream>
 
+#include "MinimumSpanningTree.hpp"
+#include "NetSolution.hpp"
+
 namespace in
 {
 	namespace bg = boost::geometry;
@@ -44,11 +47,64 @@ namespace in
 		return result;
 	}
 
+
+	TreeTransformer::TreeTransformer(const def::Data& design, const std::vector<Pin>& placedPins)
+		: m_design{design}, m_placedPins{placedPins}
+	{
+	}
+
+	TreeNetlist TreeTransformer::getMST()
+	{
+		auto key_comparator = [](const auto& a, const auto& b)
+			{
+				return a.compIdPair < b;
+			};
+
+		TreeNetlist tNetlist;
+		
+		for (const auto& designNet : m_design.nets)
+		{
+			std::vector<in::point_int> points;
+			std::vector<std::pair<std::string, std::string>> compIdPairs;
+			for (const auto& key : designNet.compPinPairs)
+			{
+				auto pinIt = std::lower_bound(m_placedPins.begin(),
+					m_placedPins.end(), key, key_comparator);
+
+				const auto& pin = *pinIt;
+				const auto pinCenter = getPinCenter(pin);
+				points.push_back(pinCenter);
+				compIdPairs.push_back(pin.compIdPair);
+
+			}
+			const auto mst = tree::rectilinearMST(points);
+			
+			TreeNet tNet;
+			tNet.name = designNet.name;
+
+			for (const auto& e : mst)
+			{
+				tNet.segments.push_back(TreeSegment{ compIdPairs[e.u], compIdPairs[e.v], points[e.u], points[e.v], e.weight});
+			}
+
+			tNetlist.nets.push_back(tNet);
+		}
+
+		return tNetlist;
+	}
+
+	SteinerTreeNetlist TreeTransformer::getRMST()
+	{
+		return{};
+	}
+
 	DataTransformer::DataTransformer(const lef::Data& library, const def::Data& design) :
 		m_library{ library }, m_design{ design } 
 	{
 		resizeLibraryPins();
 		rotateLibraryPins();
+		placePins();
+		m_treeTransformer = std::make_unique<TreeTransformer>(design, m_placedPins);
 	};
 
 	Pin DataTransformer::getPlacedDesignPin(const def::Pin& designPin) const
@@ -89,7 +145,12 @@ namespace in
 		}
 	}
 
-	std::vector<Pin> DataTransformer::getPlacedPins()
+	const std::vector<Pin>& DataTransformer::getPlacedPins() const
+	{
+		return m_placedPins;
+	}
+
+	std::vector<Pin> DataTransformer::performPinPlacement()
 	{
 		std::vector<Pin> pins;
 
@@ -113,9 +174,29 @@ namespace in
 		return pins;
 	}
 
+	void DataTransformer::placePins()
+	{
+		m_placedPins = performPinPlacement();
+		auto key_comparator = [](const auto& a, const auto& b)
+			{
+				return a.compIdPair < b.compIdPair;
+			};
+		std::sort(std::execution::par, m_placedPins.begin(), m_placedPins.end(), key_comparator);
+	}
+
 	GlobalRoutingGrid DataTransformer::getGlobalGrid(unsigned int cols, unsigned int rows)
 	{
 		return GlobalRoutingGrid(cols, rows, m_design.dieArea, m_design.tracks, m_design.nets);
+	}
+
+	TreeNetlist DataTransformer::getMST()
+	{
+		return m_treeTransformer->getMST();
+	}
+
+	SteinerTreeNetlist DataTransformer::getRMST()
+	{
+		return m_treeTransformer->getRMST();
 	}
 
 	std::pair<int, int> DataTransformer::getSize(const lef::Macro& macro) const
@@ -125,6 +206,14 @@ namespace in
 		const int macroSizeY = static_cast<int>(macro.sizeY * dbUnits);
 
 		return { macroSizeX ,macroSizeY };
+	}
+
+	int DataTransformer::getOriginX(const lef::Macro& macro) const
+	{
+		const auto dbUnits = m_library.dbUnits;
+		const int macroOriginX= static_cast<int>(macro.originX * dbUnits);
+
+		return macroOriginX;
 	}
 
 	std::vector<Pin> DataTransformer::getRotatedPins(const lef::Macro& macro,const std::vector<Pin>& pins, def::Orientation orientation) const
@@ -222,6 +311,11 @@ namespace in
 			return pin;
 		}
 
+		if (orientation == def::Orientation::FN)
+		{
+			result.portGeometry = pin.portGeometry;
+		}
+
 		if (orientation == def::Orientation::E || orientation == def::Orientation::FE)
 		{
 			for (const auto& [layer, geo] : pin.portGeometry)
@@ -274,12 +368,13 @@ namespace in
 			orientation == def::Orientation::FN ||
 			orientation == def::Orientation::FS)
 		{
+			const auto macroX = getOriginX(macro);
 			for (auto& [_, geo] : result.portGeometry)
 			{
-				std::transform(std::execution::unseq,geo.begin(), geo.end(), geo.begin(), [sizeX](const auto& in) -> box_int
+				std::transform(std::execution::unseq,geo.begin(), geo.end(), geo.begin(), [macroX,sizeX](const auto& in) -> box_int
 					{
-						return { {-in.min_corner().x() + sizeX / 2, in.min_corner().y()},
-								 {-in.max_corner().x() + sizeX / 2, in.max_corner().y()} };
+						return { { 2 * macroX + sizeX -in.max_corner().x(), in.min_corner().y()},
+								 { 2 * macroX + sizeX - in.min_corner().x(), in.max_corner().y()} };
 					});
 			}
 		}
@@ -315,6 +410,8 @@ namespace in
 
 		const auto dX = comp.placementX;
 		const auto dY = comp.placementY;
+
+		result.portGeometry = pin.portGeometry;
 
 		for (auto& [_,geo] : result.portGeometry)
 		{

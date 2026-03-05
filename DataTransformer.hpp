@@ -3,13 +3,10 @@
 #include "DEFData.hpp"
 #include "LEFData.hpp"
 
+#include "GeometryTypes.hpp"
+
 namespace in
 {
-	namespace bg = boost::geometry;
-	using point_int = bg::model::d2::point_xy<int>;
-	using box_int = bg::model::box<point_int>;
-	using point = bg::model::d2::point_xy<double>;
-	using box = bg::model::box<point>;
 	using LibraryPinsKey = std::pair<std::string, def::Orientation>;
 
 	struct Pin
@@ -77,22 +74,76 @@ namespace in
 		GlobalRoutingCells m_grid;
 	};
 
+	struct SteinerTreeSegment
+	{
+		point_int a;
+		point_int b;
+		DoglegType type;
+	};
+
+	struct SteinerTreeNet
+	{
+		std::string name;
+		std::vector<SteinerTreeSegment> segments;
+	};
+
+	struct SteinerTreeNetlist
+	{
+		std::vector<SteinerTreeNet> nets;
+	};
+
+	struct TreeSegment
+	{
+		std::pair<std::string, std::string> aName;
+		std::pair<std::string, std::string> bName;
+		point_int a;
+		point_int b;
+		int weight;
+	};
+
+	struct TreeNet
+	{
+		std::string name;
+		std::vector<TreeSegment> segments;
+	};
+
+	struct TreeNetlist
+	{
+		std::vector<TreeNet> nets;
+	};
+
+	class TreeTransformer
+	{
+	public:
+		TreeTransformer(const def::Data& design, const std::vector<Pin>& placedPins);
+		TreeNetlist getMST();
+		SteinerTreeNetlist getRMST();
+	private:
+		const def::Data& m_design;
+		const std::vector<Pin>& m_placedPins;
+	};
+
 	class DataTransformer
 	{
 	public:
 		DataTransformer(const lef::Data& library, const def::Data& design);
-		[[nodiscard]] std::vector<Pin> getPlacedPins();
+		const std::vector<Pin>& getPlacedPins() const;
 		[[nodiscard]] GlobalRoutingGrid getGlobalGrid(unsigned int cols, unsigned int rows);
+		TreeNetlist getMST();
+		SteinerTreeNetlist getRMST();
 
 	private:
 		void resizeLibraryPins();
 		void rotateLibraryPins();
+		void placePins();
 
 		[[nodiscard]] std::pair<int, int> getSize(const lef::Macro& macro) const;
+		[[nodiscard]] int getOriginX(const lef::Macro& macro) const;
 		[[nodiscard]] std::vector<Pin> getResizedPins(const lef::Macro& macro) const;
 		[[nodiscard]] std::vector<Pin> getResizedPinsUnseq(const lef::Macro& macro) const;
 		[[nodiscard]] Pin getRotatedPin(const lef::Macro& macro, const Pin& pin, def::Orientation orientation) const;
 		[[nodiscard]] std::vector<Pin> getRotatedPins(const lef::Macro& macro, const std::vector<Pin>& pins, def::Orientation orientation) const;
+		[[nodiscard]] std::vector<Pin> performPinPlacement();
 		[[nodiscard]] Pin placePin(const def::Component& macro, const Pin& pin) const;
 		const std::map<LibraryPinsKey, std::vector<Pin>>& getResizedLibraryPins() const;
 		[[nodiscard]] Pin getPlacedDesignPin(const def::Pin& designPin) const;
@@ -102,7 +153,8 @@ namespace in
 		const def::Data& m_design;
 		std::map<LibraryPinsKey, std::vector<Pin>> m_resizedPins;
 		std::map<std::string, Pin> m_designPins;
-		
+		std::vector<Pin> m_placedPins;
+		std::unique_ptr<TreeTransformer> m_treeTransformer;
 	};
 
 }

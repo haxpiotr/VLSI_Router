@@ -38,7 +38,6 @@ namespace in
         for (auto& solution : randoms)
         {
             solution.type = (dist(gen) == 0) ? DoglegType::UPPER : DoglegType::LOWER;
-            route(solution);
         }
 
         return randoms;

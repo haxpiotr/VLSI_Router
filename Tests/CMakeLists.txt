@@ -17,3 +17,4 @@ add_custom_command(
         "$<TARGET_FILE_DIR:RouterTests>/Data"
     COMMENT "Copying test data files"
 )
+get_filename_component(TESTS_PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
