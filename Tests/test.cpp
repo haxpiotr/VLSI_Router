@@ -620,7 +620,7 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitione
 	GRouter.createInitialSolution();
 
 	const auto& grid = GRouter.getGrid();
-	GRouter.performSAParSpacePartitionedOnGPU(102400, 8000.0f, 0.995f, 16);
+	GRouter.performSAParSpacePartitionedOnGPU(102400, 8000.0f, 0.995f, 512);
 }
 
 TEST(TreeTransformer, ShouldGetSmallMST)

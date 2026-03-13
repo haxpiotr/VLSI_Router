@@ -449,8 +449,8 @@ namespace in
                 hostFloats[i] = floatDist(cpuEngine);
             }
 
-            boost::compute::copy(randomFloats.begin(), randomFloats.end(), hostFloats.begin(), queue);
-            boost::compute::copy(randomIndexes.begin(), randomIndexes.end(), hostIdx.begin(), queue);
+            boost::compute::copy(hostFloats.begin(), hostFloats.end(), randomFloats.begin(), queue);
+            boost::compute::copy(hostIdx.begin(), hostIdx.end(), randomIndexes.begin(), queue);
 
             std::cout << "generating done\n";
             kernel.set_arg(0, deviceNetStarts);
