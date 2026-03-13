@@ -140,58 +140,103 @@ namespace tree
         return {};
     }
 
-    std::pair<std::vector<ResultEdge>, std::vector<Point>> rectinilearSteinerMST(const std::vector<Point>& points)
+    std::vector<ResultEdge>::const_iterator findEdge(std::vector<ResultEdge>& mst, const ResultEdge& edge)
     {
-        auto extendedPoints = points;
-
-        auto mst = rectilinearMST(points);
-
-        auto firstEdgeIt = mst.begin();
-        auto firstEdge = *firstEdgeIt;
-
-        mst.erase(firstEdgeIt);
-
-        auto neighborIt = std::find_if(mst.begin(), mst.end(), [&firstEdge](const auto& e)
+        auto it = std::find_if(mst.begin(), mst.end(), [&edge](const auto& e)
             {
-                if (e.u == firstEdge.u && e.v == firstEdge.v)
-                {
-                    return false;
-                }
-                if (e.u == firstEdge.u && e.v != firstEdge.v)
+                if (e.u == edge.u && e.v == edge.v)
                 {
                     return true;
                 }
-                if (e.u != firstEdge.u && e.v == firstEdge.v)
-                {
-                    return true;
-                }
-                if (e.u == firstEdge.v && e.v != firstEdge.u)
-                {
-                    return true;
-                }
-                if (e.u != firstEdge.v && e.v == firstEdge.u)
+                if (e.v == edge.u && e.u == edge.v)
                 {
                     return true;
                 }
                 return false;
             });
 
-        std::cout << "firstEdge: " << firstEdge.u << " " << firstEdge. v << '\n';
+        return it;
+    }
+
+    void removeEdge(std::vector<ResultEdge>& mst, const ResultEdge& edge)
+    {
+        auto removeIt = std::find_if(mst.begin(), mst.end(), [&edge](const auto& e)
+            {
+                if (e.u == edge.u && e.v == edge.v)
+                {
+                    return true;
+                }
+                if (e.v == edge.u && e.u == edge.v)
+                {
+                    return true;
+                }
+                return false;
+            });
+
+        if (removeIt == mst.end())
+        {
+            return;
+        }
+
+        mst.erase(removeIt);
+    }
+
+    std::vector<ResultEdge>::const_iterator findNeighbor(const std::vector<ResultEdge>& mst, const ResultEdge& edge)
+    {
+        auto neighborIt = std::find_if(mst.begin(), mst.end(), [&edge](const auto& e)
+            {
+                if (e.u == edge.u && e.v == edge.v)
+                {
+                    return false;
+                }
+                if (e.u == edge.v && e.v == edge.u)
+                {
+                    return false;
+                }
+                if (e.u == edge.u || e.v == edge.u || e.u == edge.v || e.v == edge.v)
+                {
+                    return true;
+                }
+                return false;                
+            });
+        
+        return neighborIt;
+    }
+
+    std::pair<std::vector<ResultEdge>, std::vector<Point>> rectinilearSteinerMST(const std::vector<Point>& points)
+    {
+        if (points.size() < 2)
+        {
+            return { {},points };
+        }
+
+        if (points.size() == 2)
+        {
+            return { rectilinearMST(points),points };
+        }
+
+        auto extendedPoints = points;
+
+        auto mst = rectilinearMST(points);
+
+        auto firstEdgeIt = mst.cbegin();
+        auto firstEdge = *firstEdgeIt;
+
+        removeEdge(mst, firstEdge);
+
+        auto neighborIt = findNeighbor(mst, firstEdge);
+        
 
         while (neighborIt != mst.end())
         {
-            std::cout << "Neighbor: " << neighborIt->u << " " << neighborIt->v << '\n';
- 
+            auto neighborEdge = *neighborIt;
+
             in::Segment firstSegment { extendedPoints[firstEdge.u],extendedPoints[firstEdge.v] };
-            in::Segment neighSegment = { extendedPoints[neighborIt->u],extendedPoints[neighborIt->v] };
+            in::Segment neighSegment = { extendedPoints[neighborEdge.u],extendedPoints[neighborEdge.v] };
 
             const auto horizontalOverlap = getBestHorizontalOverlap(firstSegment, neighSegment);
             const auto verticalOverlap = getBestVerticalOverlap(firstSegment, neighSegment);
             const auto commonCoord = getCommonCoord(firstSegment, neighSegment);
-
-            std::cout << "horizontalOverlap: " << horizontalOverlap << '\n';
-            std::cout << "verticalOverlap: " << verticalOverlap << '\n';
-            std::cout << "commonCoord: " << commonCoord.x() << ", " << commonCoord.y() << '\n';
 
             Point neighPoint;
             Point steiner = commonCoord;
@@ -204,8 +249,6 @@ namespace tree
             {
                 neighPoint = neighSegment.second;
             }
-
-            std::cout << "neighPoint: " << neighPoint.x() << ", " << neighPoint.y() << '\n';
 
             auto neighPointIt = std::find_if(extendedPoints.begin(), extendedPoints.end(), [&neighPoint](const auto& p)
                 {
@@ -240,98 +283,56 @@ namespace tree
 
             if (steiner.x() != commonCoord.x() || steiner.y() != commonCoord.y())
             {
-                std::cout << "steiner: " << steiner.x() << ", " << steiner.y() << '\n';
                 extendedPoints.push_back(steiner);
 
                 mst = rectilinearMST(extendedPoints);
 
                 const size_t steinerIndex = extendedPoints.size() - 1;
 
-                mst.erase(std::remove_if(mst.begin(), mst.end(), [steinerIndex, neighIndex](const auto& e)
-                    {
-                        if (e.v == steinerIndex && e.u != neighIndex)
-                        {
-                            return true;
-                        }
-                        if (e.u == steinerIndex && e.v != neighIndex)
-                        {
-                            return true;
-                        }
-                        return false;
-                    }),mst.end());
+                auto firstCandidate = *findEdge(mst, { firstEdge.u, steinerIndex });
+                auto secondCandidate = *findEdge(mst, { firstEdge.v, steinerIndex });
+                auto neighborCandidateIt = findEdge(mst, { steinerIndex, static_cast<size_t>(neighIndex) });
 
-                firstEdgeIt = std::find_if(mst.begin(), mst.end(), [steinerIndex, neighIndex](const auto& e)
-                    {
-                        if (e.u == steinerIndex && e.v == neighIndex)
-                        {
-                            return true;
-                        }
-                        if (e.u == neighIndex && e.v == steinerIndex)
-                        {
-                            return true;
-                        }
-                        return false;
-                    });
-                firstEdge = *firstEdgeIt;
-                neighborIt = std::find_if(mst.begin(), mst.end(), [&firstEdge](const auto& e)
-                    {
-                        if (e.u == firstEdge.u && e.v == firstEdge.v)
-                        {
-                            return false;
-                        }
-                        if (e.u == firstEdge.u && e.v != firstEdge.v)
-                        {
-                            return true;
-                        }
-                        if (e.u != firstEdge.u && e.v == firstEdge.v)
-                        {
-                            return true;
-                        }
-                        if (e.u == firstEdge.v && e.v != firstEdge.u)
-                        {
-                            return true;
-                        }
-                        if (e.u != firstEdge.v && e.v == firstEdge.u)
-                        {
-                            return true;
-                        }
-                        return false;
-                    });
-                std::cout << "firstEdge: " << firstEdge.u << " " << firstEdge.v << '\n';
-                std::cout << "Neighbor: " << neighborIt->u << " " << neighborIt->v << '\n';
+                if (neighborCandidateIt == mst.end())
+                {
+                    break;
+                }
+                auto neighborCandidate = *neighborCandidateIt;
+
+                in::Segment firstCandidateSeg{ extendedPoints[firstCandidate.u],extendedPoints[firstCandidate.v] };
+                in::Segment secondCandidateSeg{ extendedPoints[secondCandidate.u],extendedPoints[secondCandidate.v] };
+                in::Segment neighborCandidateSeg{ extendedPoints[neighborCandidate.u],extendedPoints[neighborCandidate.v] };
+
+                const auto firstOverlap = getBestHorizontalOverlap(firstCandidateSeg, neighborCandidateSeg)
+                    + getBestVerticalOverlap(firstCandidateSeg, neighborCandidateSeg);
+                const auto secondOverlap = getBestHorizontalOverlap(secondCandidateSeg, neighborCandidateSeg)
+                    + getBestVerticalOverlap(secondCandidateSeg, neighborCandidateSeg);
+
+                if (firstOverlap == secondOverlap)
+                {
+                    removeEdge(mst, firstCandidate);
+                    removeEdge(mst, secondCandidate);
+                    firstEdge = neighborCandidate;
+                    neighborIt = findNeighbor(mst, firstEdge);
+                }
+                else if (firstOverlap > secondOverlap)
+                {
+                    removeEdge(mst, secondCandidate);
+                    firstEdge = firstCandidate;
+                    neighborIt = findNeighbor(mst, firstEdge);
+                }
+                else
+                {
+                    removeEdge(mst, firstCandidate);
+                    firstEdge = secondCandidate;
+                    neighborIt = findNeighbor(mst, firstEdge);
+                }
             }
             else
             {
-                mst.erase(firstEdgeIt);
-                firstEdgeIt = neighborIt;
-                firstEdge = *firstEdgeIt;
-                    neighborIt = std::find_if(mst.begin(), mst.end(), [&firstEdge](const auto& e)
-                    {
-                        if (e.u == firstEdge.u && e.v == firstEdge.v)
-                        {
-                            return false;
-                        }
-                        if (e.u == firstEdge.u && e.v != firstEdge.v)
-                        {
-                            return true;
-                        }
-                        if (e.u != firstEdge.u && e.v == firstEdge.v)
-                        {
-                            return true;
-                        }
-                        if (e.u == firstEdge.v && e.v != firstEdge.u)
-                        {
-                            return true;
-                        }
-                        if (e.u != firstEdge.v && e.v == firstEdge.u)
-                        {
-                            return true;
-                        }
-                        return false;
-                    });
-
-                    std::cout << "firstEdge: " << firstEdge.u << " " << firstEdge.v << '\n';
-                    std::cout << "Neighbor: " << neighborIt->u << " " << neighborIt->v << '\n';
+                removeEdge(mst, firstEdge);
+                firstEdge = neighborEdge;
+                neighborIt = findNeighbor(mst, firstEdge);
             }
         }
 

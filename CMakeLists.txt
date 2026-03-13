@@ -55,6 +55,7 @@ set(LIB_HEADERS
     "SpacePartitionedGPUSA.hpp"
     "MinimumSpanningTree.hpp"
     "GeometryTypes.hpp"
+    "RoutingDataTypes.hpp"
 )
 
 set(LIB_SOURCES

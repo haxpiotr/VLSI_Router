@@ -11,11 +11,11 @@ namespace in
         ~ParSA() override = default;
         ParSA(const GlobalRoutingGrid& globalGrid,
                                         const GlobalRoutingCells& startingGrid,
-                                        const GlobalSolutions& initialSolutions,
+                                        const OptimizationRoutingData& initialSolutions,
                                         float initialTemperature,
                                         float coolingRate,
                                         float eps,
                                         size_t maxIterations);
-        GlobalSolutions optimize() override;
+        OptimizationRoutingData optimize() override;
     };
 }

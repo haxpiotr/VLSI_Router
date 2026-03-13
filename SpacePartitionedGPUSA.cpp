@@ -7,7 +7,7 @@ namespace in
     namespace compute = boost::compute;
     SpacePartitionedGPUSA::SpacePartitionedGPUSA(const GlobalRoutingGrid& globalGrid,
                             const GlobalRoutingCells& startingGrid,
-                            const GlobalSolutions& initialSolutions,
+                            const OptimizationRoutingData& initialSolutions,
                             float initialTemperature,
                             float coolingRate,
                             float eps,
@@ -23,13 +23,13 @@ namespace in
     {
     }
 
-    GlobalSolutions SpacePartitionedGPUSA::optimize()
+    OptimizationRoutingData SpacePartitionedGPUSA::optimize()
     {
         compute::device device = compute::system::default_device();
         compute::context context(device);
         compute::command_queue queue(context, device);
 
-        const auto solutionsSize = m_initialSolutions.size();
+        const auto solutionsSize = m_initialSolutions.legTypes.size();
 
         compute::vector<compute::int2_> deviceNetStarts(solutionsSize, context);
         compute::vector<compute::int2_> deviceNetEnds(solutionsSize, context);
@@ -39,14 +39,15 @@ namespace in
         const auto& sortedSolution = m_spaces[0];
         for(int i = 0; i < solutionsSize; ++i)
         {
-            netStarts[i] = { sortedSolution[i].endpoints.first.x(), sortedSolution[i].endpoints.first.y()};
-            netEnds[i] = { sortedSolution[i].endpoints.second.x(), sortedSolution[i].endpoints.second.y() };
+            netStarts[i] = compute::int2_{ sortedSolution.globalNetStartsX[i], sortedSolution.globalNetStartsY[i]};
+            netEnds[i] = compute::int2_{ sortedSolution.globalNetEndsX[i], sortedSolution.globalNetEndsY[i]};
         }
 
         std::vector<GlobalRoutingCells> grids(m_independentSpacesSize, m_startingGrid);
 
         std::vector<float> penalties(m_independentSpacesSize);
         compute::vector<float> devicePenalties(m_independentSpacesSize, context);
+
         for(int i = 0; i < m_independentSpacesSize; ++i)
         {
             addSolutions(grids[i], m_spaces[i]);
@@ -81,7 +82,7 @@ namespace in
         std::vector<char> doglegTypes(doglegTypesSize);
         for (int i = 0; i < doglegTypesSize; ++i)
         {
-            doglegTypes[i] = static_cast<char>(m_spaces[i / solutionsSize][i % solutionsSize].type);
+            doglegTypes[i] = static_cast<char>(m_spaces[i / solutionsSize].legTypes[i % solutionsSize]);
         }
         compute::vector<char> deviceDoglegTypes(doglegTypesSize, context);
         compute::copy(doglegTypes.begin(), doglegTypes.end(), deviceDoglegTypes.begin(), queue);
@@ -146,9 +147,9 @@ namespace in
                 // Lower dogleg type result.verticalSegment = { {endV.x(),startV.y()}, endV };
                 if (type == 0)
                 {
-                    start->x = startVX;
+                    start->x = endHX;
                     start->y = startVY;
-                    end->x = startVX;
+                    end->x = endHX;
                     end->y = endVY;
                 }
                 else //upper dogleg type result.verticalSegment = { startV, {startV.x(), endV.y()} };
@@ -338,6 +339,77 @@ namespace in
                 }
                 penalties[id] = currentPenalty;
             }
+            __kernel void simulatedAnnealingWithCompute(
+                __global const int2* netStarts,
+                __global const int2* netEnds,
+                __global char* doglegTypes,
+                __global int* horizontalGrid,
+                __global int* verticalGrid,
+                __global float* penalties,
+                __global const uint* randomIndex,
+                __global const float* randomValue,
+                __global const float* temperatures,
+                const uint netCount,
+                const uint cols,
+                const uint rows,
+                const uint spaces,
+                const uint iterationSize,
+                const uint temperatureSteps)
+            {
+                uint id = get_global_id(0);
+                uint threadCount = get_global_size(0);
+
+                const uint gridSize = cols * rows;
+                const uint gridStartIndex = gridSize * id;
+                __global int* localHorizontalGrid = horizontalGrid + gridStartIndex;
+                __global int* localVerticalGrid = verticalGrid + gridStartIndex;
+
+                const uint solStartIndex = id * netCount;
+                __global char* localDoglegTypes = doglegTypes + solStartIndex;
+                float currentPenalty = penalties[id];
+
+                for (uint k = 0; k < temperatureSteps; ++k)
+                {
+                    for (uint i = 0; i < iterationSize; ++i)
+                    {
+                        const uint spaceIndex = sqrt((float)spaces);
+
+                        uint flipIndex = randomIndex[id * iterationSize * k + i];
+
+                        char oldType = localDoglegTypes[flipIndex];
+                        char newType = 1 - oldType;
+                        float penaltyDiff = ripUpAndReroute(localHorizontalGrid,
+                            localVerticalGrid,
+                            cols,
+                            rows,
+                            netStarts[flipIndex],
+                            netEnds[flipIndex],
+                            oldType,
+                            newType);
+
+                        if (penaltyDiff < 0 || exp(-penaltyDiff / temperatures[k]) > randomValue[id * iterationSize * k + i])
+                        {
+                            localDoglegTypes[flipIndex] = newType;
+                            currentPenalty += penaltyDiff;
+                        }
+                        else
+                        {
+                            ripUpAndReroute(localHorizontalGrid,
+                                localVerticalGrid,
+                                cols,
+                                rows,
+                                netStarts[flipIndex],
+                                netEnds[flipIndex],
+                                newType,
+                                oldType);
+                        }
+                    }
+                }
+                
+               
+                penalties[id] = currentPenalty;
+            }
+
         );
 
         compute::program program = compute::program::create_with_source(source, context);
@@ -347,23 +419,57 @@ namespace in
             
             program.build();
 
-            compute::kernel kernel(program, "simulatedAnnealing");
+            compute::kernel kernel(program, "simulatedAnnealingWithCompute");
+
+            const unsigned int totalTemperatureSteps = std::ceil(std::log(static_cast<float>(m_eps) / m_initialTemperature) / std::log(m_coolingRate));
+            std::vector<float> hostTemperatures(totalTemperatureSteps);
+            for (size_t i = 0; i < totalTemperatureSteps; ++i)
+            {
+                hostTemperatures[i] = m_initialTemperature * std::pow(m_coolingRate, i);
+            }
+
+            boost::compute::vector<float> deviceTemperatures(totalTemperatureSteps, context);
+            boost::compute::copy(hostTemperatures.begin(), hostTemperatures.end(), deviceTemperatures.begin(), queue);
+
+            std::mt19937 cpuEngine(timeSeed);
+            std::uniform_int_distribution intDist(static_cast<unsigned int>(32), static_cast<unsigned int>(solutionsSize));
+            std::uniform_real_distribution<float> floatDist(0.0f, 1.0f);
+
+            const unsigned int iterationSize = m_maxIterations / m_spaces.size();
+            const unsigned int randomsSize = iterationSize * m_spaces.size() * totalTemperatureSteps;
+            std::vector<unsigned int> hostIdx(randomsSize);
+            std::vector<float> hostFloats(randomsSize);
+            std::cout << "randomsSize: " << randomsSize << '\n';
+            boost::compute::vector<boost::compute::uint_> randomIndexes(randomsSize, context);
+            boost::compute::vector<boost::compute::float_> randomFloats(randomsSize, context);
+
+            for (size_t i = 0; i < randomsSize; ++i)
+            {
+                hostIdx[i] = intDist(cpuEngine);
+                hostFloats[i] = floatDist(cpuEngine);
+            }
+
+            boost::compute::copy(randomFloats.begin(), randomFloats.end(), hostFloats.begin(), queue);
+            boost::compute::copy(randomIndexes.begin(), randomIndexes.end(), hostIdx.begin(), queue);
+
+            std::cout << "generating done\n";
             kernel.set_arg(0, deviceNetStarts);
             kernel.set_arg(1, deviceNetEnds);
             kernel.set_arg(2, deviceDoglegTypes);
             kernel.set_arg(3, deviceHorizontalGrids);
             kernel.set_arg(4, deviceVerticalGrids);
             kernel.set_arg(5, devicePenalties);
-            kernel.set_arg(6, m_initialTemperature);
-            kernel.set_arg(7, m_coolingRate);
-            kernel.set_arg(8, m_eps);
-            kernel.set_arg(9, static_cast<unsigned int>(m_maxIterations));
-            kernel.set_arg(10,timeSeed);
-            kernel.set_arg(11, static_cast<unsigned int>(solutionsSize));
-            kernel.set_arg(12, static_cast<unsigned int>(m_globalGrid.getCols()));
-            kernel.set_arg(13, static_cast<unsigned int>(m_globalGrid.getRows()));
-            kernel.set_arg(14, static_cast<unsigned int>(m_spaces.size()));
-            queue.enqueue_1d_range_kernel(kernel, 0, m_independentSpacesSize, 0);
+            kernel.set_arg(6, randomIndexes);
+            kernel.set_arg(7, randomFloats);
+            kernel.set_arg(8, deviceTemperatures);
+            kernel.set_arg(9, static_cast<unsigned int>(solutionsSize));
+            kernel.set_arg(10, static_cast<unsigned int>(m_globalGrid.getCols()));
+            kernel.set_arg(11, static_cast<unsigned int>(m_globalGrid.getRows()));
+            kernel.set_arg(12, static_cast<unsigned int>(m_spaces.size()));
+            kernel.set_arg(13, iterationSize);
+            kernel.set_arg(14, totalTemperatureSteps);
+            auto result = queue.enqueue_1d_range_kernel(kernel, 0, m_independentSpacesSize, 0);
+                
             std::vector<float> hostPenalties(m_independentSpacesSize);
             compute::copy(devicePenalties.begin(), devicePenalties.end(), hostPenalties.begin(), queue);
             compute::copy(deviceHorizontalGrids.begin(), deviceHorizontalGrids.end(), horizontalGrids.begin(), queue);

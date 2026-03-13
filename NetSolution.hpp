@@ -30,7 +30,9 @@ namespace in
     float getUniform(std::mt19937& gen,float from, float to);
     size_t getUniform(std::mt19937& gen,size_t from, size_t to);
     void flipDoglegType(NetSolution& solution);
+    DoglegType flipDoglegType(DoglegType type);
     DoglegSegment route(const NetSolution& solution);
     GlobalSolutions createRandomSolutions(const GlobalSolutions& solutions, std::mt19937& gen);
     int manhattanDistance(const Segment &segment);
+    int chebyshevDistance(const Segment& segment);
 }

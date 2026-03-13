@@ -112,6 +112,19 @@ namespace in
 		std::vector<TreeNet> nets;
 	};
 
+	using KeyType = std::pair<std::string, std::string>;
+	struct KeyComparator
+	{
+		bool operator()(const KeyType& a,const KeyType& b) const
+		{
+			auto key_comparator = [](const auto& u, const auto& v)
+				{
+					return u < v;
+				};
+			return key_comparator(a, b);
+		}
+	};
+
 	class TreeTransformer
 	{
 	public:
@@ -121,6 +134,7 @@ namespace in
 	private:
 		const def::Data& m_design;
 		const std::vector<Pin>& m_placedPins;
+		std::map<KeyType, Pin, KeyComparator> m_pinMap;
 	};
 
 	class DataTransformer

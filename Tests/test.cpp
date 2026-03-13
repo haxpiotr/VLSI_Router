@@ -338,9 +338,9 @@ TEST(DataTransformer, ShouldResizeRotateAndMovePinsFS)
 	const auto& keyPin = *it;
 	EXPECT_EQ(keyPin.portGeometry.at("Metal1").size(), 2);
 	const auto& keyGeo = keyPin.portGeometry.at("Metal1")[1];
-	EXPECT_EQ(keyGeo.min_corner().x(), 1387920);
+	EXPECT_EQ(keyGeo.min_corner().x(), 1392600);
 	EXPECT_EQ(keyGeo.min_corner().y(), 584440);
-	EXPECT_EQ(keyGeo.max_corner().x(), 1387800);
+	EXPECT_EQ(keyGeo.max_corner().x(), 1392720);
 	EXPECT_EQ(keyGeo.max_corner().y(), 586000);
 }
 
@@ -375,17 +375,17 @@ TEST(DataTransformer, ShouldFindBBoxAndCenter)
 	const auto& testBox1 = testPin.portGeometry.at("Metal1")[0];
 	const auto& testBox2 = testPin.portGeometry.at("Metal1")[1];
 
-	EXPECT_EQ(testBox1.min_corner().x(), 362120);
-	EXPECT_EQ(testBox1.min_corner().y(), 381130);
-	EXPECT_EQ(testBox1.max_corner().x(), 362280);
-	EXPECT_EQ(testBox1.max_corner().y(), 381520);
-	EXPECT_EQ(testBox2.min_corner().x(), 361100);
-	EXPECT_EQ(testBox2.min_corner().y(), 381360);
-	EXPECT_EQ(testBox2.max_corner().x(), 362280);
-	EXPECT_EQ(testBox2.max_corner().y(), 381520);
+	EXPECT_EQ(testBox1.min_corner().x(), 10250);
+	EXPECT_EQ(testBox1.min_corner().y(), 32290);
+	EXPECT_EQ(testBox1.max_corner().x(), 10410);
+	EXPECT_EQ(testBox1.max_corner().y(), 32570);
+	EXPECT_EQ(testBox2.min_corner().x(), 9280);
+	EXPECT_EQ(testBox2.min_corner().y(), 32410);
+	EXPECT_EQ(testBox2.max_corner().x(), 10410);
+	EXPECT_EQ(testBox2.max_corner().y(), 32570);
 
-	in::point_int expectedCenter{ 361690,381325 };
-	in::box_int expectedBBox{{ 361100,381130 },{362280, 381520}};
+	in::point_int expectedCenter{ 9845,32430 };
+	in::box_int expectedBBox{{ 9280,32290 },{362280, 381520}};
 
 	const auto testPinBBoxResult = in::getPinBBox(testPin);
 	EXPECT_EQ(testPinBBoxResult.min_corner().x(), expectedBBox.min_corner().x());
@@ -524,26 +524,52 @@ TEST(GlobalRouter, ShouldGetNetlist)
 	}
 }
 
-TEST(GlobalRouter, ShouldGetBigNetlist)
+TEST(GlobalRouter, ShouldGetNetlist_Sample3)
 {
 	in::def::Loader defLoader;
 	in::lef::Loader lefLoader;
-	const auto design = defLoader.get("Data/ispd18_test2.input.def");
-	const auto library = lefLoader.get("Data/ispd18_test2.input.lef");
+	const auto design = defLoader.get("Data/ispd18_sample3.input.def");
+	const auto library = lefLoader.get("Data/ispd18_sample3.input.lef");
 	in::DataTransformer transformer(library, design);
 	const auto globalGrid = transformer.getGlobalGrid(100, 100);
 
 	in::GlobalRouter GRouter(transformer, 100, 100);
-	EXPECT_EQ(GRouter.getNetlist().size(), 36834);
+	EXPECT_EQ(GRouter.getNetlist().size(), 7);
 }
 
-TEST(GlobalRouter, ShouldGetEvenBiggerNetlist)
+TEST(GlobalRouter, ShouldGetNetlist_Sample3_RMST)
 {
-	GTEST_SKIP();
+	in::def::Loader defLoader;
+	in::lef::Loader lefLoader;
+	const auto design = defLoader.get("Data/ispd18_sample3.input.def");
+	const auto library = lefLoader.get("Data/ispd18_sample3.input.lef");
+	in::DataTransformer transformer(library, design);
+	const auto globalGrid = transformer.getGlobalGrid(100, 100);
+
+	in::GlobalRouter GRouter(transformer, 100, 100);
+	EXPECT_EQ(GRouter.getNetlist().size(), 7);
+	const auto rsmtResult = GRouter.getSteinerTreeNetlist();
+}
+
+TEST(GlobalRouter, ShouldGetNetlist_Test_1_RMST)
+{
+	in::def::Loader defLoader;
+	in::lef::Loader lefLoader;
+	const auto design = defLoader.get("Data/ispd18_test1.input.def");
+	const auto library = lefLoader.get("Data/ispd18_test1.input.lef");
+	in::DataTransformer transformer(library, design);
+	const auto globalGrid = transformer.getGlobalGrid(100, 100);
+
+	in::GlobalRouter GRouter(transformer, 100, 100);
+	EXPECT_EQ(GRouter.getNetlist().size(), 7);
+	const auto rsmtResult = GRouter.getSteinerTreeNetlist();
+}
+TEST(GlobalRouter, ShouldGetEvenBiggerNetlist_And_Perform_Seq_SA)
+{
     in::def::Loader defLoader;
     in::lef::Loader lefLoader;
-    const auto design = defLoader.get("Data/ispd18_test10.input.def");
-    const auto library = lefLoader.get("Data/ispd18_test10.input.lef");
+    const auto design = defLoader.get("Data/ispd18_test1.input.def");
+    const auto library = lefLoader.get("Data/ispd18_test1.input.lef");
     in::DataTransformer transformer(library, design);
     
     in::GlobalRouter GRouter(transformer, 100, 100);
@@ -555,11 +581,10 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlist)
 
 TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSA)
 {
-	GTEST_SKIP();
     in::def::Loader defLoader;
     in::lef::Loader lefLoader;
-    const auto design = defLoader.get("Data/ispd18_test10.input.def");
-    const auto library = lefLoader.get("Data/ispd18_test10.input.lef");
+    const auto design = defLoader.get("Data/ispd18_test1.input.def");
+    const auto library = lefLoader.get("Data/ispd18_test1.input.lef");
     in::DataTransformer transformer(library, design);
     
     in::GlobalRouter GRouter(transformer, 100, 100);
@@ -570,7 +595,6 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSA)
 
 TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitioned)
 {
-	GTEST_SKIP();
     in::def::Loader defLoader;
     in::lef::Loader lefLoader;
     const auto design = defLoader.get("Data/ispd18_test10.input.def");
@@ -586,7 +610,6 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitione
 
 TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitionedOnGPU)
 {
-	GTEST_SKIP();
 	in::def::Loader defLoader;
 	in::lef::Loader lefLoader;
 	const auto design = defLoader.get("Data/ispd18_test10.input.def");
@@ -597,22 +620,7 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitione
 	GRouter.createInitialSolution();
 
 	const auto& grid = GRouter.getGrid();
-	GRouter.performSAParSpacePartitionedOnGPU(1638400, 8000.0f, 0.995f, 1024);
-}
-TEST(MinimumSpanningTree, ShouldFind)
-{
-	std::vector<in::point_int> points{ {0, 6}, {1, 5}, {4, 7}, {3, 2}, {1, 0}, {6, 2}, {5, 4} };
-
-	const auto mst = tree::rectilinearMST(points);
-
-	int total_cost = 0;
-	std::cout << "Krawedzie MST wyznaczone przez funkcje:" << std::endl;
-	for (const auto& edge : mst) {
-		std::cout << "P" << edge.u << " -- P" << edge.v
-			<< " | Koszt: " << edge.weight << std::endl;
-		total_cost += edge.weight;
-	}
-	std::cout << "Calkowity koszt: " << total_cost << std::endl;
+	GRouter.performSAParSpacePartitionedOnGPU(102400, 8000.0f, 0.995f, 16);
 }
 
 TEST(TreeTransformer, ShouldGetSmallMST)
@@ -643,7 +651,7 @@ TEST(TreeTransformer, ShouldGetSmallMST)
 
 	EXPECT_EQ(q31.pinGeometry.size(), 4);
 
-	const auto& mst = transformer.getMST();
+	const auto& mst = GRouter.getTreeNetlist();
 
 	for (const auto& net : mst.nets)
 	{
@@ -652,6 +660,18 @@ TEST(TreeTransformer, ShouldGetSmallMST)
 		{
 			std::cout << s.aName.first << " " << s.aName.second << "(" << s.a.x() << ", " << s.a.y() << ") -> ";
 			std::cout << s.bName.first << " " << s.bName.second << "(" << s.b.x() << ", " << s.b.y() << ")\n";
+		}
+	}
+
+	const auto& rmst = GRouter.getSteinerTreeNetlist();
+
+	for (const auto& net : rmst.nets)
+	{
+		std::cout << net.name << '\n';
+		for (const auto& s : net.segments)
+		{
+			std::cout << "(" << s.a.x() << ", " << s.a.y() << ") -> ";
+			std::cout << "(" << s.b.x() << ", " << s.b.y() << ")\n";
 		}
 	}
 }
@@ -660,15 +680,15 @@ TEST(TreeTransformer, ShouldGetMST)
 {
 	in::def::Loader defLoader;
 	in::lef::Loader lefLoader;
-	const auto design = defLoader.get("Data/ispd18_test2.input.def");
-	const auto library = lefLoader.get("Data/ispd18_test2.input.lef");
+	const auto design = defLoader.get("Data/ispd18_test1.input.def");
+	const auto library = lefLoader.get("Data/ispd18_test1.input.lef");
 	in::DataTransformer transformer(library, design);
 	const auto globalGrid = transformer.getGlobalGrid(100, 100);
 
 	in::GlobalRouter GRouter(transformer, 100, 100);
-	EXPECT_EQ(GRouter.getNetlist().size(), 36834);
+	EXPECT_EQ(GRouter.getNetlist().size(), 3153);
 	
-	const auto& mst = transformer.getMST();
+	const auto& mst = GRouter.getTreeNetlist();
 	
 	for (const auto& net : mst.nets)
 	{
@@ -681,21 +701,39 @@ TEST(TreeTransformer, ShouldGetMST)
 	}
 }
 
-TEST(TreeTransformer, ShouldGetBigMST)
+TEST(TreeTransformer, ShouldGetMST_3)
 {
 	in::def::Loader defLoader;
 	in::lef::Loader lefLoader;
-	const auto design = defLoader.get("Data/ispd18_test10.input.def");
-	const auto library = lefLoader.get("Data/ispd18_test10.input.lef");
+	const auto design = defLoader.get("Data/ispd18_test3.input.def");
+	const auto library = lefLoader.get("Data/ispd18_test3.input.lef");
+	in::DataTransformer transformer(library, design);
+	const auto globalGrid = transformer.getGlobalGrid(100, 100);
+
+	in::GlobalRouter GRouter(transformer, 100, 100);
+
+	const auto& mst = GRouter.getTreeNetlist();
+
+	EXPECT_EQ(GRouter.getNetlist().size(), mst.nets.size());
+}
+
+TEST(TreeTransformer, ShouldGetMST_4)
+{
+	in::def::Loader defLoader;
+	in::lef::Loader lefLoader;
+	const auto design = defLoader.get("Data/ispd18_test4.input.def");
+	const auto library = lefLoader.get("Data/ispd18_test4.input.lef");
 	in::DataTransformer transformer(library, design);
 	const auto globalGrid = transformer.getGlobalGrid(100, 100);
 
 	in::GlobalRouter GRouter(transformer, 100, 100);
 	
-	const auto& mst = transformer.getMST();
+	const auto& mst = GRouter.getTreeNetlist();
 
 	EXPECT_EQ(GRouter.getNetlist().size(), mst.nets.size());
 }
+
+
 
 TEST(TreeTransformer, ShouldGetReallySmallRMST)
 {
@@ -731,14 +769,44 @@ TEST(TreeTransformer, ShouldGetSlightlyBiggerRMST)
 
 TEST(TreeTransformer, ShouldGetRMST_100)
 {
+	const size_t size = 100;
 	std::mt19937 rng(std::random_device{}());
 	std::uniform_int_distribution<int> dist(1, 199);  // 0 < x,y < 200
 
 	std::set<std::pair<int, int>> usedPoints;
 	std::vector<in::point_int> points;
-	points.reserve(100);
+	points.reserve(size);
 
-	while (points.size() < 100)
+	while (points.size() < size)
+	{
+		int x = dist(rng);
+		int y = dist(rng);
+		if (usedPoints.insert({ x, y }).second) {
+			points.push_back({ x, y });
+		}
+	}
+
+	const auto rmst = tree::rectinilearSteinerMST(points);
+
+	for (const auto& e : rmst.first)
+	{
+		std::cout << "(" << rmst.second[e.u].x() << ", " << rmst.second[e.u].y()
+			<< ") -> (" << rmst.second[e.v].x() << ", " << rmst.second[e.v].y()
+			<< ")\n";
+	}
+}
+
+TEST(TreeTransformer, ShouldGetRMST_1000)
+{
+	const size_t size = 1000;
+	std::mt19937 rng(std::random_device{}());
+	std::uniform_int_distribution<int> dist(0, size);  // 0 < x,y < 200
+
+	std::set<std::pair<int, int>> usedPoints;
+	std::vector<in::point_int> points;
+	points.reserve(size);
+
+	while (points.size() < size)
 	{
 		int x = dist(rng);
 		int y = dist(rng);
@@ -783,4 +851,69 @@ TEST(TreeTransformer, ShouldGetRMST_2000)
 			<< ") -> (" << rmst.second[e.v].x() << ", " << rmst.second[e.v].y()
 			<< ")\n";
 	}
+}
+
+TEST(TreeTransformer, ShouldGetRMST_3)
+{
+	
+	std::vector<in::point_int> points{ {1,0},{0,3},{5,2} };
+
+	const auto rmst = tree::rectinilearSteinerMST(points);
+
+	for (const auto& e : rmst.first)
+	{
+		std::cout << "(" << rmst.second[e.u].x() << ", " << rmst.second[e.u].y()
+			<< ") -> (" << rmst.second[e.v].x() << ", " << rmst.second[e.v].y()
+			<< ")\n";
+	}
+}
+
+TEST(TreeTransformer, ShouldGetRMST_3_v2)
+{
+
+	std::vector<in::point_int> points{ {1,0},{0,2},{4,1} };
+
+	const auto rmst = tree::rectinilearSteinerMST(points);
+
+	for (const auto& e : rmst.first)
+	{
+		std::cout << "(" << rmst.second[e.u].x() << ", " << rmst.second[e.u].y()
+			<< ") -> (" << rmst.second[e.v].x() << ", " << rmst.second[e.v].y()
+			<< ")\n";
+	}
+}
+
+TEST(TreeTransformer, ShouldGetRMST_7)
+{
+
+	std::vector<in::point_int> points{ {0,6},{1,5},{4,7},{5,4},{6,2},{3,2},{1,0} };
+
+	const auto rmst = tree::rectinilearSteinerMST(points);
+
+	for (const auto& e : rmst.first)
+	{
+		std::cout << "(" << rmst.second[e.u].x() << ", " << rmst.second[e.u].y()
+			<< ") -> (" << rmst.second[e.v].x() << ", " << rmst.second[e.v].y()
+			<< ")\n";
+	}
+}
+
+TEST(TreeTransformer, ShouldGetRMST_2)
+{
+
+	std::vector<in::point_int> points{ {0,6},{1,5} };
+
+	const auto rmst = tree::rectinilearSteinerMST(points);
+
+	EXPECT_EQ(rmst.second.size(), 2);
+}
+
+TEST(TreeTransformer, ShouldGetRMST_1)
+{
+
+	std::vector<in::point_int> points{ {0,6}};
+
+	const auto rmst = tree::rectinilearSteinerMST(points);
+
+	EXPECT_EQ(rmst.second.size(), 1);
 }

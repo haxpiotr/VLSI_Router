@@ -4,6 +4,7 @@
 
 #include <execution>
 #include <fstream>
+#include <omp.h>
 
 #include "MinimumSpanningTree.hpp"
 #include "NetSolution.hpp"
@@ -51,6 +52,10 @@ namespace in
 	TreeTransformer::TreeTransformer(const def::Data& design, const std::vector<Pin>& placedPins)
 		: m_design{design}, m_placedPins{placedPins}
 	{
+		for (const auto& placedPin : m_placedPins)
+		{
+			m_pinMap[placedPin.compIdPair] = placedPin;
+		}
 	}
 
 	TreeNetlist TreeTransformer::getMST()
@@ -60,18 +65,17 @@ namespace in
 				return a.compIdPair < b;
 			};
 
-		TreeNetlist tNetlist;
-		
-		for (const auto& designNet : m_design.nets)
+
+		std::vector<std::vector<TreeNet>> localNetlists(omp_get_max_threads());
+
+#pragma omp parallel for 
+		for (size_t i = 0; i < m_design.nets.size(); ++i)
 		{
 			std::vector<in::point_int> points;
 			std::vector<std::pair<std::string, std::string>> compIdPairs;
-			for (const auto& key : designNet.compPinPairs)
+			for (const auto& key : m_design.nets[i].compPinPairs)
 			{
-				auto pinIt = std::lower_bound(m_placedPins.begin(),
-					m_placedPins.end(), key, key_comparator);
-
-				const auto& pin = *pinIt;
+				const auto& pin = m_pinMap[key];
 				const auto pinCenter = getPinCenter(pin);
 				points.push_back(pinCenter);
 				compIdPairs.push_back(pin.compIdPair);
@@ -80,14 +84,28 @@ namespace in
 			const auto mst = tree::rectilinearMST(points);
 			
 			TreeNet tNet;
-			tNet.name = designNet.name;
+			tNet.name = m_design.nets[i].name;
 
 			for (const auto& e : mst)
 			{
 				tNet.segments.push_back(TreeSegment{ compIdPairs[e.u], compIdPairs[e.v], points[e.u], points[e.v], e.weight});
 			}
 
-			tNetlist.nets.push_back(tNet);
+			localNetlists[omp_get_thread_num()].push_back(tNet);
+		}
+
+		size_t totalSize{ 0 };
+		for (const auto& v : localNetlists)
+		{
+			totalSize += v.size();
+		}
+
+		TreeNetlist tNetlist;
+		tNetlist.nets.reserve(totalSize);
+
+		for (const auto& v : localNetlists)
+		{
+			tNetlist.nets.insert(tNetlist.nets.end(), v.begin(), v.end());
 		}
 
 		return tNetlist;
@@ -95,7 +113,60 @@ namespace in
 
 	SteinerTreeNetlist TreeTransformer::getRMST()
 	{
-		return{};
+		auto key_comparator = [](const auto& a, const auto& b)
+			{
+				return a.compIdPair < b;
+			};
+
+		std::vector<std::vector<SteinerTreeNet>> localNets(omp_get_max_threads());
+
+#pragma omp parallel for 
+		for (size_t i = 0; i < m_design.nets.size(); ++i)
+		{
+			std::vector<in::point_int> points;
+			for (const auto& key : m_design.nets[i].compPinPairs)
+			{
+				const auto& pin = m_pinMap[key];
+				const auto pinCenter = getPinCenter(pin);
+				points.push_back(pinCenter);
+			}
+			const auto rmstResult = tree::rectinilearSteinerMST(points);
+			const auto& [rmst, resultPoints] = rmstResult;
+
+			SteinerTreeNet steinerNet;
+			steinerNet.name = m_design.nets[i].name;
+
+			for (const auto& e : rmst)
+			{
+				SteinerTreeSegment segment;
+				segment.type = DoglegType::ANY;
+				segment.a = { resultPoints[e.u].x(),resultPoints[e.u].y() };
+				segment.b = { resultPoints[e.v].x(),resultPoints[e.v].y() };
+				if (segment.a.x() == segment.b.x() || segment.a.y() == segment.b.y())
+				{
+					segment.type = DoglegType::LINE;
+				}
+				steinerNet.segments.push_back(segment);
+			}
+
+			localNets[omp_get_thread_num()].push_back(steinerNet);
+		}
+
+		size_t totalSize{ 0 };
+		for (const auto& v : localNets)
+		{
+			totalSize += v.size();
+		}
+
+		SteinerTreeNetlist steinerNetlist;
+		steinerNetlist.nets.reserve(totalSize);
+
+		for (const auto& v : localNets)
+		{
+			steinerNetlist.nets.insert(steinerNetlist.nets.end(), v.begin(), v.end());
+		}
+
+		return steinerNetlist;
 	}
 
 	DataTransformer::DataTransformer(const lef::Data& library, const def::Data& design) :
@@ -152,23 +223,39 @@ namespace in
 
 	std::vector<Pin> DataTransformer::performPinPlacement()
 	{
-		std::vector<Pin> pins;
+		std::vector<std::vector<Pin>> localPins(omp_get_max_threads());
 
 		const auto& libraryPins = getResizedLibraryPins();
 
-		for (const auto& comp : m_design.components)
+#pragma omp parallel for
+		for (size_t i = 0; i< m_design.components.size(); ++i)
 		{
-			const auto& libPins = libraryPins.at({ comp.name,comp.orientation });
+			const auto& libPins = libraryPins.at({ m_design.components[i].name,m_design.components[i].orientation});
 
 			for (const auto& libPin : libPins)
 			{
-				pins.push_back(placePin(comp, libPin));
+				localPins[omp_get_thread_num()].push_back(placePin(m_design.components[i], libPin));
 			}
 		}
 
-		for (const auto& pin : m_design.pins)
+#pragma omp parallel for
+		for (size_t i = 0; i < m_design.pins.size(); ++i)
 		{
-			pins.push_back(getPlacedDesignPin(pin));
+			localPins[omp_get_thread_num()].push_back(getPlacedDesignPin(m_design.pins[i]));
+		}
+
+		size_t totalSize{ 0 };
+		for (const auto& v : localPins)
+		{
+			totalSize += v.size();
+		}
+
+		std::vector<Pin> pins;
+		pins.reserve(totalSize);
+		
+		for (const auto& v : localPins)
+		{
+			pins.insert(pins.end(), v.begin(), v.end());
 		}
 
 		return pins;

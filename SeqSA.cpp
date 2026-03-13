@@ -5,7 +5,7 @@ namespace in
     SeqSA::SeqSA(
     const GlobalRoutingGrid& globalGrid,
     const GlobalRoutingCells& startingGrid,
-    const GlobalSolutions& initialSolutions,
+    const OptimizationRoutingData& initialSolutions,
     float initialTemperature,
     float coolingRate,
     float eps,
@@ -76,12 +76,16 @@ namespace in
       }
 	}
 
-	void SeqSA::addSolutions(GlobalRoutingCells& grid, const GlobalSolutions& solutions)
+	void SeqSA::addSolutions(GlobalRoutingCells& grid, const OptimizationRoutingData& solutions)
 	{
-		for (const auto& solution : solutions)
-		{
-			addSolution(grid, route(solution));
-		}
+        for (size_t i = 0; i < solutions.legTypes.size(); ++i)
+        {
+            NetSolution solution;
+            solution.type = solutions.legTypes[i];
+            solution.name = solutions.netNames[i];
+            solution.endpoints = { {solutions.globalNetStartsX[i],solutions.globalNetStartsY[i]},{solutions.globalNetEndsX[i],solutions.globalNetEndsY[i]}};
+            addSolution(grid, route(solution));
+        }
 	}
 
 	float SeqSA::calculateCellPenalty(const GlobalRoutingCell& cell) const
@@ -97,7 +101,7 @@ namespace in
 		return grid.penalty;
 	}
 
-	GlobalSolutions SeqSA::optimize()
+    OptimizationRoutingData SeqSA::optimize()
     {
         static std::random_device rd;
         static std::mt19937 gen(rd());
@@ -113,8 +117,14 @@ namespace in
         {
             for(size_t i = 0; i < m_maxIterations; ++i)
             {
-                const size_t candidateIndex = getUniform(gen, 0, currentSolutions.size() - 1);
-                const auto previousSolution = currentSolutions[candidateIndex];
+                const size_t candidateIndex = getUniform(gen, 0, currentSolutions.legTypes.size() - 1);
+
+                NetSolution previousSolution;
+                previousSolution.name = currentSolutions.netNames[candidateIndex];
+                previousSolution.type = currentSolutions.legTypes[candidateIndex];
+                previousSolution.endpoints = { {currentSolutions.globalNetStartsX[candidateIndex],currentSolutions.globalNetStartsY[candidateIndex]},
+                    {currentSolutions.globalNetEndsX[candidateIndex],currentSolutions.globalNetEndsY[candidateIndex]} };
+
                 auto candidateSolution = previousSolution;
 
                 flipDoglegType(candidateSolution);
@@ -124,7 +134,7 @@ namespace in
 
                 if (deltaPenalty < 0.0f || std::exp(-deltaPenalty / temperature) > getUniform(gen, 0.0f, 1.0f))
                 {
-                    currentSolutions[candidateIndex] = candidateSolution;
+                    currentSolutions.legTypes[candidateIndex] = candidateSolution.type;
                     currentPenalty = newPenalty;
                 }
                 else

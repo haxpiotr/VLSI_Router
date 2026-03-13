@@ -7,7 +7,7 @@ namespace in
     SpacePartitionedSA::SpacePartitionedSA(
 									   const GlobalRoutingGrid& globalGrid,
 									   const GlobalRoutingCells& startingGrid,
-									   const GlobalSolutions& initialSolutions,
+									   const OptimizationRoutingData& initialSolutions,
 									   float initialTemperature,
 									   float coolingRate,
 									   float eps,
@@ -27,33 +27,24 @@ namespace in
 
     void SpacePartitionedSA::initializeIndependentSpaces()
     {
-        auto sortedSolutions = m_initialSolutions;
-
-        std::ranges::sort(sortedSolutions,[](const auto& netSolA, const auto& netSolB)
-		{
-			return manhattanDistance(netSolA.endpoints) > manhattanDistance(netSolA.endpoints);
-		});
-
-		//sortedSolutions = m_initialSolutions;
-		
 		const auto indexRange = static_cast<size_t>(std::sqrt(m_independentSpacesSize));
 
 		for(size_t mask = 0; mask < m_independentSpacesSize; ++mask)
 		{
-			GlobalSolutions space = sortedSolutions;
+			OptimizationRoutingData space = m_initialSolutions;
 			for(size_t i = 0; i < indexRange; ++i)
 			{
 				const bool iSet = (mask >> i) & 0x01;
 				if(iSet)
 				{
-					flipDoglegType(space[i]);
+					space.legTypes[i] = flipDoglegType(space.legTypes[i]);
 				}
 			}
 			m_spaces.emplace_back(std::move(space));
 		}
     }
 
-	GlobalSolutions SpacePartitionedSA::optimize()
+	OptimizationRoutingData SpacePartitionedSA::optimize()
 	{
 		auto globalBestSolutions = m_initialSolutions;
 		float globalBestPenalty = std::numeric_limits<float>::max();
@@ -75,10 +66,15 @@ namespace in
 				
 				for(size_t i = 0; i < m_maxIterations / threadCount; ++i)
 				{
-					const size_t candidateIndex = getUniform(gen, startRange, localSolutions.size() - 1);
-					const auto previousSolution = localSolutions[candidateIndex];
-					auto candidateSolution = previousSolution;
+					const size_t candidateIndex = getUniform(gen, startRange, localSolutions.legTypes.size() - 1);				
 
+					NetSolution previousSolution;
+					previousSolution.name = localSolutions.netNames[candidateIndex];
+					previousSolution.type = localSolutions.legTypes[candidateIndex];
+					previousSolution.endpoints = { {localSolutions.globalNetStartsX[candidateIndex],localSolutions.globalNetStartsY[candidateIndex]},
+						{localSolutions.globalNetEndsX[candidateIndex],localSolutions.globalNetEndsY[candidateIndex]} };
+
+					auto candidateSolution = previousSolution;
 					flipDoglegType(candidateSolution);
 
 					const float newPenalty = ripUpAndReroute(localGrid, previousSolution, candidateSolution);
@@ -86,7 +82,7 @@ namespace in
 
 					if (deltaPenalty < 0.0f || std::exp(-deltaPenalty / temperature) > getUniform(gen, 0.0f, 1.0f))
 					{
-						localSolutions[candidateIndex] = candidateSolution;
+						localSolutions.legTypes[candidateIndex] = candidateSolution.type;
 						localCurrentPenalty = newPenalty;
 					}
 					else

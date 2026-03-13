@@ -14,6 +14,7 @@ namespace in
 		UPPER,
 		LOWER,
 		ANY,
+		LINE,
 		NONE
 	};
 }

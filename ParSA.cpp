@@ -9,7 +9,7 @@ namespace in
     ParSA::ParSA(
 		const GlobalRoutingGrid& globalGrid,
 		const GlobalRoutingCells& startingGrid,
-		const GlobalSolutions& initialSolutions,
+		const OptimizationRoutingData& initialSolutions,
 		float initialTemperature,
 		float coolingRate,
 		float eps,
@@ -25,7 +25,7 @@ namespace in
 	{
 	}
 
-	GlobalSolutions ParSA::optimize()
+	OptimizationRoutingData ParSA::optimize()
 	{
 		float temperature = m_initialTemperature;
 		auto globalBestSolutions = m_initialSolutions;
@@ -47,8 +47,14 @@ namespace in
 				
 				for(size_t i = 0; i < m_maxIterations / threadCount; ++i)
 				{
-					const size_t candidateIndex = getUniform(gen, 0, localSolutions.size() - 1);
-					const auto previousSolution = localSolutions[candidateIndex];
+					const size_t candidateIndex = getUniform(gen, 0, localSolutions.netNames.size() - 1);
+
+					NetSolution previousSolution;
+					previousSolution.name = localSolutions.netNames[candidateIndex];
+					previousSolution.type = localSolutions.legTypes[candidateIndex];
+					previousSolution.endpoints = { {localSolutions.globalNetStartsX[candidateIndex],localSolutions.globalNetStartsY[candidateIndex]},
+						{localSolutions.globalNetEndsX[candidateIndex],localSolutions.globalNetEndsY[candidateIndex]} };
+
 					auto candidateSolution = previousSolution;
 
 					flipDoglegType(candidateSolution);
@@ -58,7 +64,7 @@ namespace in
 
 					if (deltaPenalty < 0.0f || std::exp(-deltaPenalty / temperature) > getUniform(gen, 0.0f, 1.0f))
 					{
-						localSolutions[candidateIndex] = candidateSolution;
+						localSolutions.legTypes[candidateIndex] = candidateSolution.type;
 						localCurrentPenalty = newPenalty;
 					}
 					else

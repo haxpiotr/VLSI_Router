@@ -27,6 +27,16 @@ namespace in
 		}
 	}
 
+	DoglegType flipDoglegType(DoglegType type)
+	{
+		if (type == DoglegType::UPPER)
+		{
+			return DoglegType::LOWER;
+		}
+		
+		return DoglegType::UPPER;
+	}
+
 	GlobalSolutions createRandomSolutions(
 		const GlobalSolutions& solutions,
 		std::mt19937& gen)
@@ -54,5 +64,11 @@ namespace in
 	{ 
 		const auto &[start, end] = segment;
 		return std::abs(start.x() - end.x()) + std::abs(start.y() - end.y());
+	}
+
+	int chebyshevDistance(const Segment& segment)
+	{
+		const auto& [start, end] = segment;
+		return std::max(std::abs(start.x() - end.x()), std::abs(start.y() - end.y()));
 	}
 }
