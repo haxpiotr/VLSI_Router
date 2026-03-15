@@ -623,7 +623,7 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitione
 	GRouter.performSAParSpacePartitionedOnGPU(102400, 8000.0f, 0.995f, 512);
 }
 
-TEST(TreeTransformer, ShouldGetSmallMST)
+TEST(GlobalRouter, ShouldGetSmallMST)
 {
 	in::def::Loader defLoader;
 	in::lef::Loader lefLoader;
@@ -676,7 +676,7 @@ TEST(TreeTransformer, ShouldGetSmallMST)
 	}
 }
 
-TEST(TreeTransformer, ShouldGetMST)
+TEST(GlobalRouter, ShouldGetMST)
 {
 	in::def::Loader defLoader;
 	in::lef::Loader lefLoader;
@@ -701,7 +701,7 @@ TEST(TreeTransformer, ShouldGetMST)
 	}
 }
 
-TEST(TreeTransformer, ShouldGetMST_3)
+TEST(GlobalRouter, ShouldGetMST_3)
 {
 	in::def::Loader defLoader;
 	in::lef::Loader lefLoader;
@@ -717,7 +717,7 @@ TEST(TreeTransformer, ShouldGetMST_3)
 	EXPECT_EQ(GRouter.getNetlist().size(), mst.nets.size());
 }
 
-TEST(TreeTransformer, ShouldGetMST_4)
+TEST(GlobalRouter, ShouldGetMST_4)
 {
 	in::def::Loader defLoader;
 	in::lef::Loader lefLoader;
@@ -733,9 +733,25 @@ TEST(TreeTransformer, ShouldGetMST_4)
 	EXPECT_EQ(GRouter.getNetlist().size(), mst.nets.size());
 }
 
+TEST(GlobalRouter, ShouldGetRMST_4)
+{
+	in::def::Loader defLoader;
+	in::lef::Loader lefLoader;
+	const auto design = defLoader.get("Data/ispd18_test4.input.def");
+	const auto library = lefLoader.get("Data/ispd18_test4.input.lef");
+	in::DataTransformer transformer(library, design);
+	const auto globalGrid = transformer.getGlobalGrid(100, 100);
+
+	in::GlobalRouter GRouter(transformer, 100, 100);
+
+	const auto& mst = GRouter.getSteinerTreeNetlist();
+
+	EXPECT_EQ(GRouter.getNetlist().size(), mst.nets.size());
+}
 
 
-TEST(TreeTransformer, ShouldGetReallySmallRMST)
+
+TEST(TreeTransformer, Should_Get_Really_Small_RMST)
 {
 	std::vector<in::point_int> points{ {0, 6}, { 1,5 }, { 4,7 }, { 3,2 }};
 	const auto rmst = tree::rectinilearSteinerMST(points);
@@ -745,7 +761,7 @@ TEST(TreeTransformer, ShouldGetReallySmallRMST)
 		std::cout << "(" << rmst.second[e.u].x() << ", " << rmst.second[e.u].y() << ") -> (" << rmst.second[e.v].x() << ", " << rmst.second[e.v].y() << ")\n";
 	}
 }
-TEST(TreeTransformer, ShouldGetSmallRMST)
+TEST(TreeTransformer, Should_Get_Small_RMST)
 {
 	std::vector<in::point_int> points{{0, 6}, { 1,5 }, { 4,7 }, { 3,2 }, { 5,4 }, { 1,0 }, { 6,2 }};
 	const auto rmst = tree::rectinilearSteinerMST(points);
@@ -756,7 +772,7 @@ TEST(TreeTransformer, ShouldGetSmallRMST)
 	}
 }
 
-TEST(TreeTransformer, ShouldGetSlightlyBiggerRMST)
+TEST(TreeTransformer, Should_Get_Slightly_Bigger_RMST)
 {
 	std::vector<in::point_int> points{ {0, 6}, { 1,5 }, { 4,7 }, { 3,2 }, { 5,4 }, { 1,0 }, { 6,2 }, {10,10} , {0, 8}, {15, 5} };
 	const auto rmst = tree::rectinilearSteinerMST(points);
@@ -767,7 +783,7 @@ TEST(TreeTransformer, ShouldGetSlightlyBiggerRMST)
 	}
 }
 
-TEST(TreeTransformer, ShouldGetRMST_100)
+TEST(TreeTransformer, Should_Get_RMST_100)
 {
 	const size_t size = 100;
 	std::mt19937 rng(std::random_device{}());
@@ -796,7 +812,7 @@ TEST(TreeTransformer, ShouldGetRMST_100)
 	}
 }
 
-TEST(TreeTransformer, ShouldGetRMST_1000)
+TEST(TreeTransformer, Should_Get_RMST_1000)
 {
 	const size_t size = 1000;
 	std::mt19937 rng(std::random_device{}());
@@ -825,7 +841,7 @@ TEST(TreeTransformer, ShouldGetRMST_1000)
 	}
 }
 
-TEST(TreeTransformer, ShouldGetRMST_2000)
+TEST(TreeTransformer, Should_Get_RMST_2000)
 {
 	std::mt19937 rng(std::random_device{}());
 	std::uniform_int_distribution<int> dist(1, 10000);  // 0 < x,y < 200
@@ -853,7 +869,7 @@ TEST(TreeTransformer, ShouldGetRMST_2000)
 	}
 }
 
-TEST(TreeTransformer, ShouldGetRMST_3)
+TEST(TreeTransformer, Should_Get_RMST_3)
 {
 	
 	std::vector<in::point_int> points{ {1,0},{0,3},{5,2} };
@@ -868,7 +884,7 @@ TEST(TreeTransformer, ShouldGetRMST_3)
 	}
 }
 
-TEST(TreeTransformer, ShouldGetRMST_3_v2)
+TEST(TreeTransformer, Should_Get_RMST_3_v2)
 {
 
 	std::vector<in::point_int> points{ {1,0},{0,2},{4,1} };
@@ -883,7 +899,7 @@ TEST(TreeTransformer, ShouldGetRMST_3_v2)
 	}
 }
 
-TEST(TreeTransformer, ShouldGetRMST_7)
+TEST(TreeTransformer, Should_Get_RMST_7)
 {
 
 	std::vector<in::point_int> points{ {0,6},{1,5},{4,7},{5,4},{6,2},{3,2},{1,0} };
@@ -898,7 +914,7 @@ TEST(TreeTransformer, ShouldGetRMST_7)
 	}
 }
 
-TEST(TreeTransformer, ShouldGetRMST_2)
+TEST(TreeTransformer, Should_Get_RMST_2)
 {
 
 	std::vector<in::point_int> points{ {0,6},{1,5} };
@@ -908,7 +924,7 @@ TEST(TreeTransformer, ShouldGetRMST_2)
 	EXPECT_EQ(rmst.second.size(), 2);
 }
 
-TEST(TreeTransformer, ShouldGetRMST_1)
+TEST(TreeTransformer, Should_Get_RMST_1)
 {
 
 	std::vector<in::point_int> points{ {0,6}};
