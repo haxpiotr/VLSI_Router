@@ -16,11 +16,12 @@ namespace in
                             float eps,
                             size_t maxIterations,
                             size_t independentSpacesSize);
-        OptimizationRoutingData optimize() override;
+        OptimizationSolution optimize() override;
     
     protected:
         void initializeIndependentSpaces();
         size_t m_independentSpacesSize{ 0 };  
         std::vector<OptimizationRoutingData> m_spaces;
+
     };
 }

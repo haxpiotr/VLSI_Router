@@ -16,6 +16,6 @@ namespace in
                                         float coolingRate,
                                         float eps,
                                         size_t maxIterations);
-        OptimizationRoutingData optimize() override;
+        OptimizationSolution optimize() override;
     };
 }

@@ -101,7 +101,7 @@ namespace in
 		return grid.penalty;
 	}
 
-    OptimizationRoutingData SeqSA::optimize()
+    OptimizationSolution SeqSA::optimize()
     {
         static std::random_device rd;
         static std::mt19937 gen(rd());
@@ -148,7 +148,7 @@ namespace in
             temperature *= m_coolingRate;
         }
 
-        return currentSolutions;
+        return { currentSolutions.legTypes, currentPenalty };
     }
 
 	float SeqSA::getCurrentPenalty() const

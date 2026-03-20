@@ -30,4 +30,10 @@ namespace in
 		std::vector<DoglegType> legTypes;
 	};
 
+	struct OptimizationSolution
+	{
+		std::vector<DoglegType> legTypes;
+		double penalty{ 0 };
+	};
+
 }

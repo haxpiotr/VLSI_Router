@@ -10,7 +10,7 @@ class IOptimizationSolver
 {
 public:
 	virtual ~IOptimizationSolver() = default;
-	virtual OptimizationRoutingData optimize() = 0;
+	virtual OptimizationSolution optimize() = 0;
 };
 
 }

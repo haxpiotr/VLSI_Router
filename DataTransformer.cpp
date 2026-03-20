@@ -60,12 +60,6 @@ namespace in
 
 	TreeNetlist TreeTransformer::getMST()
 	{
-		auto key_comparator = [](const auto& a, const auto& b)
-			{
-				return a.compIdPair < b;
-			};
-
-
 		std::vector<std::vector<TreeNet>> localNetlists(omp_get_max_threads());
 
 #pragma omp parallel for 
@@ -113,11 +107,6 @@ namespace in
 
 	SteinerTreeNetlist TreeTransformer::getRMST()
 	{
-		auto key_comparator = [](const auto& a, const auto& b)
-			{
-				return a.compIdPair < b;
-			};
-
 		std::vector<std::vector<SteinerTreeNet>> localNets(omp_get_max_threads());
 
 #pragma omp parallel for 

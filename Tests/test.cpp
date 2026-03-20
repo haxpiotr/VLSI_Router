@@ -583,8 +583,8 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSA)
 {
     in::def::Loader defLoader;
     in::lef::Loader lefLoader;
-    const auto design = defLoader.get("Data/ispd18_test1.input.def");
-    const auto library = lefLoader.get("Data/ispd18_test1.input.lef");
+    const auto design = defLoader.get("Data/ispd18_test10.input.def");
+    const auto library = lefLoader.get("Data/ispd18_test10.input.lef");
     in::DataTransformer transformer(library, design);
     
     in::GlobalRouter GRouter(transformer, 100, 100);
@@ -620,7 +620,7 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitione
 	GRouter.createInitialSolution();
 
 	const auto& grid = GRouter.getGrid();
-	GRouter.performSAParSpacePartitionedOnGPU(102400, 8000.0f, 0.995f, 512);
+	GRouter.performSAParSpacePartitionedOnGPU(102400, 8000.0f, 0.995f, 1024);
 }
 
 TEST(GlobalRouter, ShouldGetSmallMST)

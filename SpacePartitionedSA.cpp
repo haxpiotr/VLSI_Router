@@ -44,10 +44,11 @@ namespace in
 		}
     }
 
-	OptimizationRoutingData SpacePartitionedSA::optimize()
+	OptimizationSolution SpacePartitionedSA::optimize()
 	{
 		auto globalBestSolutions = m_initialSolutions;
 		float globalBestPenalty = std::numeric_limits<float>::max();
+		std::vector<float> penalties(m_independentSpacesSize);
 
 		#pragma omp parallel shared(globalBestPenalty, globalBestSolutions)
 		{
@@ -84,6 +85,7 @@ namespace in
 					{
 						localSolutions.legTypes[candidateIndex] = candidateSolution.type;
 						localCurrentPenalty = newPenalty;
+						penalties[threadNum] = localCurrentPenalty;
 					}
 					else
 					{
@@ -94,18 +96,11 @@ namespace in
 				temperature *= m_coolingRate;	
 			}
 
-			#pragma omp critical
-			{
-				if (localGrid.penalty < globalBestPenalty)
-				{
-					globalBestPenalty = localGrid.penalty;
-					globalBestSolutions = localSolutions;
-				}
-			}
-
-			std::cout << "Temperature: " << temperature << ", Current Penalty: " << globalBestPenalty << std::endl;
 		}
 
-		return globalBestSolutions;
+		const auto minPenaltyIt = std::min_element(penalties.begin(), penalties.end());
+		const auto resultLegTypesIndex = std::distance(penalties.begin(), minPenaltyIt);
+
+		return { m_spaces[resultLegTypesIndex].legTypes, *minPenaltyIt };
 	}
 }

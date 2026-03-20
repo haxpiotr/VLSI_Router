@@ -65,7 +65,7 @@ private:
 	RoutingData m_routingData;
 	OptimizationRoutingData m_optimizationData;
 	OptimizationRoutingData m_nonOptimizationData;
-	OptimizationRoutingData m_optimizationResult;
+	OptimizationSolution m_optimizationResult;
 
 	void readAllTwoPointNets();
 	void initializeDoglegTypes();

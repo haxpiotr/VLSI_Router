@@ -260,6 +260,8 @@ namespace in
 		std::cout << "Initialized simulated annealing on: " << m_optimizationData.netNames.size() << std::endl;
 
 		m_optimizationResult = m_solver->optimize();
+
+		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
 	}
 
 	void GlobalRouter::performSAPar(
@@ -279,6 +281,8 @@ namespace in
 		std::cout << "Initialized parallel simulated annealing on: " << m_optimizationData.netNames.size() << std::endl;
 
 		m_optimizationResult = m_solver->optimize();
+
+		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
 	}
 
 	void GlobalRouter::performSAParSpacePartitioned(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces)
@@ -297,6 +301,8 @@ namespace in
 			<< " solutions in " << spaces << " spaces." << std::endl;
 
 		m_optimizationResult = m_solver->optimize();
+
+		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
 	}
 
 	void GlobalRouter::performSAParSpacePartitionedOnGPU(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces)
@@ -315,5 +321,7 @@ namespace in
 			<< " solutions in " << spaces << " spaces." << std::endl;
 
 		m_optimizationResult = m_solver->optimize();
+
+		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
 	}
 }
