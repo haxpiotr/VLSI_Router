@@ -7,6 +7,8 @@
 
 #include <omp.h>
 
+#include "RNDPerTStepSpacePartitionedGPUSA.hpp"
+
 namespace in
 {
 	GlobalRouter::GlobalRouter(DataTransformer& dataTransformer, unsigned int cols, unsigned int rows)
@@ -318,6 +320,26 @@ namespace in
 			spaces);
 
 		std::cout << "Initialized space partitioned parallel GPU simulated annealing on: " << m_optimizationData.netNames.size()
+			<< " solutions in " << spaces << " spaces." << std::endl;
+
+		m_optimizationResult = m_solver->optimize();
+
+		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
+	}
+
+	void GlobalRouter::performSAParSpacePartitionedOnGPUWithRandsPerIteration(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces)
+	{
+		m_solver = std::make_unique<RNDPerTStepSpacePartitionedGPUSA>(
+			m_globalGrid,
+			m_grid,
+			m_optimizationData,
+			initialTemperature,
+			coolingRate,
+			0.001f,
+			maxIterations,
+			spaces);
+
+		std::cout << "Initialized space partitioned parallel GPU simulated annealing on with rands generated per temperature iteration: " << m_optimizationData.netNames.size()
 			<< " solutions in " << spaces << " spaces." << std::endl;
 
 		m_optimizationResult = m_solver->optimize();

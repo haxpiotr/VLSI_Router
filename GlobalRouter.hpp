@@ -49,6 +49,7 @@ public:
 	void performSAPar(size_t maxIterations, float initialTemperature, float coolingRate);
 	void performSAParSpacePartitioned(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces);
 	void performSAParSpacePartitionedOnGPU(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces);
+	void performSAParSpacePartitionedOnGPUWithRandsPerIteration(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces);
 
 private:
 	DataTransformer& m_dataTransformer;

@@ -185,8 +185,6 @@ namespace in
             
             m_queue.finish();
 
-            std::vector<float> hostPenalties(m_independentSpacesSize);
-
             const auto minPenaltyIter = compute::min_element(m_penalties.begin(), m_penalties.end(), m_queue);
             const auto minPenalty = *minPenaltyIter;
 

@@ -279,4 +279,61 @@ namespace krnl
             penalties[id] = currentPenalty;
         });
     }
+
+    std::string getCreateRandomSolution()
+    {
+        return BOOST_COMPUTE_STRINGIZE_SOURCE(
+            __kernel void create_random_solution(
+                __global char* doglegTypes,
+                __global float* randomValues,
+                const uint netCount)
+            {
+                uint id = get_global_id(0);
+                const uint solStartIndex = id * netCount;
+                __global char* localDoglegTypes = doglegTypes + solStartIndex;
+                __global float* localRandomValues = randomValues + solStartIndex;
+                for (uint i = 0; i < netCount; ++i)
+                {
+                    localDoglegTypes[i] = (uint)step(0.5f, localRandomValues[i]);
+                }
+            });
+    }
+
+    std::string getPlaceAndCalculatePenalty()
+    {
+        return BOOST_COMPUTE_STRINGIZE_SOURCE(
+            __kernel void place_and_calculate_penalty(
+                __global const int2 * netStarts,
+                __global const int2 * netEnds,
+                __global char* doglegTypes,
+                __global int* horizontalGrid,
+                __global int* verticalGrid,
+                __global float* penalties,
+                const float temperature,
+                const uint netCount,
+                const uint cols,
+                const uint rows)
+        {
+            uint id = get_global_id(0);
+            uint threadCount = get_global_size(0);
+
+            const uint gridSize = cols * rows;
+            const uint gridStartIndex = gridSize * id;
+            __global int* localHorizontalGrid = horizontalGrid + gridStartIndex;
+            __global int* localVerticalGrid = verticalGrid + gridStartIndex;
+
+            const uint solStartIndex = id * netCount;
+            __global char* localDoglegTypes = doglegTypes + solStartIndex;
+            
+            float penalty = 0;
+
+            for (unit i = 0; i < netCount; ++i)
+            {
+                penalty += addSolution(localHorizontalGrid, localVerticalGrid, cols, rows, netStarts[i], netEnds[i], localDoglegTypes[i]);
+            }
+
+            penalties[id] = penalty;
+        });
+    }
+
 }

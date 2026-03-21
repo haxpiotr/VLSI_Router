@@ -605,7 +605,7 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitione
     GRouter.createInitialSolution();
 
 	const auto& grid = GRouter.getGrid();
-    GRouter.performSAParSpacePartitioned(102400, 8000.0f, 0.995f,16);
+    GRouter.performSAParSpacePartitioned(262144, 8000.0f, 0.995f,16);
 }
 
 TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitionedOnGPU)
@@ -620,7 +620,22 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitione
 	GRouter.createInitialSolution();
 
 	const auto& grid = GRouter.getGrid();
-	GRouter.performSAParSpacePartitionedOnGPU(102400, 8000.0f, 0.995f, 1024);
+	GRouter.performSAParSpacePartitionedOnGPU(262144, 8000.0f, 0.995f, 1024);
+}
+
+TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitionedOnGPU_Rands_Per_T_Step)
+{
+	in::def::Loader defLoader;
+	in::lef::Loader lefLoader;
+	const auto design = defLoader.get("Data/ispd18_test10.input.def");
+	const auto library = lefLoader.get("Data/ispd18_test10.input.lef");
+	in::DataTransformer transformer(library, design);
+
+	in::GlobalRouter GRouter(transformer, 100, 100);
+	GRouter.createInitialSolution();
+
+	const auto& grid = GRouter.getGrid();
+	GRouter.performSAParSpacePartitionedOnGPUWithRandsPerIteration(1048576, 8000.0f, 0.995f, 4096);
 }
 
 TEST(GlobalRouter, ShouldGetSmallMST)
