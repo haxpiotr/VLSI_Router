@@ -638,6 +638,21 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitione
 	GRouter.performSAParSpacePartitionedOnGPUWithRandsPerIteration(1048576, 8000.0f, 0.995f, 4096);
 }
 
+TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromGeneticAlgorithm)
+{
+	in::def::Loader defLoader;
+	in::lef::Loader lefLoader;
+	const auto design = defLoader.get("Data/ispd18_test10.input.def");
+	const auto library = lefLoader.get("Data/ispd18_test10.input.lef");
+	in::DataTransformer transformer(library, design);
+
+	in::GlobalRouter GRouter(transformer, 100, 100);
+	GRouter.createInitialSolution();
+
+	const auto& grid = GRouter.getGrid();
+	GRouter.performGeneticAlgorithm(512, 1024, 0.01f);
+}
+
 TEST(GlobalRouter, ShouldGetSmallMST)
 {
 	in::def::Loader defLoader;

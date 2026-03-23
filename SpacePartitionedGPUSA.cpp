@@ -113,7 +113,6 @@ namespace in
             }
         }
 
-
     }
 
     OptimizationSolution SpacePartitionedGPUSA::optimize()
@@ -150,20 +149,21 @@ namespace in
 
             std::cout << "RANDOMS SIZE: " << randomsSize << '\n';
 
-            std::vector<unsigned int> hostIdx(randomsSize);
-            std::vector<float> hostFloats(randomsSize);
-
             boost::compute::vector<boost::compute::uint_> randomIndexes(randomsSize, m_context);
             boost::compute::vector<boost::compute::float_> randomFloats(randomsSize, m_context);
 
-            for (size_t i = 0; i < randomsSize; ++i)
             {
-                hostIdx[i] = intDist(cpuEngine);
-                hostFloats[i] = floatDist(cpuEngine);
-            }
+                std::vector<unsigned int> hostIdx(randomsSize);
+                std::vector<float> hostFloats(randomsSize);
+                for (size_t i = 0; i < randomsSize; ++i)
+                {
+                    hostIdx[i] = intDist(cpuEngine);
+                    hostFloats[i] = floatDist(cpuEngine);
+                }
 
-            boost::compute::copy(hostFloats.begin(), hostFloats.end(), randomFloats.begin(), m_queue);
-            boost::compute::copy(hostIdx.begin(), hostIdx.end(), randomIndexes.begin(), m_queue);
+                boost::compute::copy(hostFloats.begin(), hostFloats.end(), randomFloats.begin(), m_queue);
+                boost::compute::copy(hostIdx.begin(), hostIdx.end(), randomIndexes.begin(), m_queue);
+            }
 
             kernel.set_arg(0, m_netStarts);
             kernel.set_arg(1, m_netEnds);

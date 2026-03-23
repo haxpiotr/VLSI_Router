@@ -50,6 +50,7 @@ public:
 	void performSAParSpacePartitioned(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces);
 	void performSAParSpacePartitionedOnGPU(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces);
 	void performSAParSpacePartitionedOnGPUWithRandsPerIteration(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces);
+	void performGeneticAlgorithm(unsigned int generations, unsigned int populationSize, float mutationRate);
 
 private:
 	DataTransformer& m_dataTransformer;

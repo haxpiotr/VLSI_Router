@@ -309,7 +309,6 @@ namespace krnl
                 __global int* horizontalGrid,
                 __global int* verticalGrid,
                 __global float* penalties,
-                const float temperature,
                 const uint netCount,
                 const uint cols,
                 const uint rows)
@@ -327,12 +326,126 @@ namespace krnl
             
             float penalty = 0;
 
-            for (unit i = 0; i < netCount; ++i)
+            for (uint i = 0; i < netCount; ++i)
             {
                 penalty += addSolution(localHorizontalGrid, localVerticalGrid, cols, rows, netStarts[i], netEnds[i], localDoglegTypes[i]);
             }
 
             penalties[id] = penalty;
+        });
+    }
+
+    std::string crossoverTwoParentsMidpoint()
+    {
+        return BOOST_COMPUTE_STRINGIZE_SOURCE(
+            __kernel void crossover_two_parents_midpoint(
+                __global const char* oldDoglegTypes,
+                __global char* doglegTypes,
+                __global const uint* bestIndexes,
+                const uint midpoint,
+                const uint netCount)
+        {
+            const uint id = get_global_id(0u);
+            const uint populationSize = get_global_size(0u);
+
+            const uint firstParentIndex = bestIndexes[(id*2u / populationSize)];
+            const uint secondParentIndex = bestIndexes[id % (populationSize/2u)];
+
+            const uint firstParentStartIndex = firstParentIndex * netCount;
+            const uint secondParentStartIndex = secondParentIndex * netCount;
+            const uint solStartIndex = id * netCount;
+            __global char* localDoglegTypes = doglegTypes + solStartIndex;
+
+            for (uint i = 0; i < midpoint; ++i)
+            {
+                localDoglegTypes[i] = oldDoglegTypes[firstParentStartIndex + i];
+            }
+
+            for (uint i = midpoint; i < netCount; ++i)
+            {
+                localDoglegTypes[i] = oldDoglegTypes[secondParentIndex + i];
+            }
+
+        });
+    }
+
+    std::string crossoverTwoParentsProbability()
+    {
+        return BOOST_COMPUTE_STRINGIZE_SOURCE(
+            __kernel void crossover_two_parents_probability(
+                __global const char* oldDoglegTypes,
+                __global char* doglegTypes,
+                const uint firstParentIndex,
+                const uint secondParentIndex,
+                const float threshold,
+                __global const float* randomValues,
+                const uint netCount)
+        {
+            uint id = get_global_id(0);
+            uint threadCount = get_global_size(0);
+
+            const uint firstParentStartIndex = firstParentIndex * netCount;
+            const uint secondParentStartIndex = secondParentIndex * netCount;
+            const uint solStartIndex = id * netCount;
+            __global char* localDoglegTypes = doglegTypes + solStartIndex;
+
+            for (uint i = 0; i < netCount; ++i)
+            {
+                localDoglegTypes[i] = step(threshold, randomValues[solStartIndex + i]) == 0.0f ? oldDoglegTypes[firstParentStartIndex + i] : oldDoglegTypes[secondParentIndex + i];
+            }
+
+        });
+    }
+
+    std::string mutateChosenIndexes()
+    {
+        return BOOST_COMPUTE_STRINGIZE_SOURCE(
+            __kernel void mutate_chosen_indexes(
+                __global char* doglegTypes,
+                __global const uint* chosenIndexes,
+                const uint indexCount,
+                const uint netCount)
+        {
+            uint id = get_global_id(0);
+
+            const uint firstParentStartIndex = firstParentIndex * netCount;
+            const uint secondParentStartIndex = secondParentIndex * netCount;
+            const uint solStartIndex = id * netCount;
+            __global char* localDoglegTypes = doglegTypes + solStartIndex;
+            const uint indexesStartIndex = id * indexCount;
+            __global uint* localChosenIndexes = chosenIndexes + indexesStartIndex;
+
+            for (uint i = 0; i < indexCount; ++i)
+            {
+                const uint chosenIndex = localChosenIndexes[i];
+                localDoglegTypes[chosenIndex] = 1 - localDoglegTypes[chosenIndex];
+            }
+
+        });
+    }
+
+    std::string mutateWithProbability()
+    {
+        return BOOST_COMPUTE_STRINGIZE_SOURCE(
+            __kernel void mutate_with_probability(
+                __global char* doglegTypes,
+                __global const float* randomValues,
+                const float probabibility,
+                const uint netCount)
+        {
+            uint id = get_global_id(0);
+
+            const uint firstParentStartIndex = firstParentIndex * netCount;
+            const uint secondParentStartIndex = secondParentIndex * netCount;
+            const uint solStartIndex = id * netCount;
+            __global char* localDoglegTypes = doglegTypes + solStartIndex;
+
+            for (uint i = 0; i < netCount; ++i)
+            {
+                const char currentType = localDoglegTypes[i];
+                localDoglegTypes[i] = step(probabibility, randomValues[solStartIndex + i]) == 0.0f ? 1 - currentType : currentType;
+            }
+
         });
     }
 

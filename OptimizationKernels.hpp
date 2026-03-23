@@ -9,4 +9,8 @@ namespace krnl
     std::string getSARandomsPerTemperatureStep();
     std::string getCreateRandomSolution();
     std::string getPlaceAndCalculatePenalty();
+    std::string crossoverTwoParentsMidpoint();
+    std::string crossoverTwoParentsProbability();
+    std::string mutateChosenIndexes();
+    std::string mutateWithProbability();
 }

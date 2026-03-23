@@ -8,6 +8,7 @@
 #include <omp.h>
 
 #include "RNDPerTStepSpacePartitionedGPUSA.hpp"
+#include "GeneticAlgorithm.hpp"
 
 namespace in
 {
@@ -341,6 +342,17 @@ namespace in
 
 		std::cout << "Initialized space partitioned parallel GPU simulated annealing on with rands generated per temperature iteration: " << m_optimizationData.netNames.size()
 			<< " solutions in " << spaces << " spaces." << std::endl;
+
+		m_optimizationResult = m_solver->optimize();
+
+		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
+	}
+
+	void GlobalRouter::performGeneticAlgorithm(unsigned int generations, unsigned int populationSize, float mutationRate)
+	{
+		m_solver = std::make_unique<GeneticAlgorithm>(m_globalGrid, m_grid, m_optimizationData, generations, populationSize, mutationRate);
+
+		std::cout << "Initialized GeneticAlgorithmon\n";
 
 		m_optimizationResult = m_solver->optimize();
 

@@ -58,6 +58,7 @@ set(LIB_HEADERS
     "RoutingDataTypes.hpp"
     "OptimizationKernels.hpp"
     "RNDPerTStepSpacePartitionedGPUSA.hpp"
+    "GeneticAlgorithm.hpp"
 )
 
 set(LIB_SOURCES
@@ -74,6 +75,7 @@ set(LIB_SOURCES
     "MinimumSpanningTree.cpp"
     "OptimizationKernels.cpp"
     "RNDPerTStepSpacePartitionedGPUSA.cpp"
+    "GeneticAlgorithm.cpp"
 )
 
 add_library(${PROJECT_NAME} STATIC ${LIB_SOURCES})
