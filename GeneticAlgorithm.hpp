@@ -26,6 +26,7 @@ protected:
 	void calculatePenalties();
 	void findBestSolutions();
 	void crossover();
+	void mutate();
 	void initDeviceData();
 
 private:
@@ -34,7 +35,7 @@ private:
 	OptimizationRoutingData m_solutionData;
 	unsigned int m_generations;
 	unsigned int m_populationSize;
-	float mutationRate;
+	float m_mutationRate;
 	unsigned int m_netCount;
 	
 	compute::device m_device;

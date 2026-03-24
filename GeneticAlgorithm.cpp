@@ -18,7 +18,8 @@ namespace in
         m_solutionData{ solutionData },
         m_generations 
         {generations},
-        m_populationSize{ populationSize }
+        m_populationSize{ populationSize },
+        m_mutationRate{mutationRate}
     {
         m_device = compute::system::default_device();
         m_context = compute::context(m_device);
@@ -31,16 +32,18 @@ namespace in
     void GeneticAlgorithm::initDeviceData()
     {
         const auto solutionsSize = m_netCount;
+        const unsigned int overallSize = solutionsSize * m_populationSize;
+
+        std::cout << "Net count: " << solutionsSize << ", overallSize: " << overallSize << '\n';
+
         m_netStarts = compute::vector<compute::int2_>(solutionsSize, m_context);
         m_netEnds = compute::vector<compute::int2_>(solutionsSize, m_context);
-        m_legTypes = compute::vector<char>(solutionsSize, m_context);
-        m_oldLegTypes = compute::vector<char>(solutionsSize, m_context);
+        m_legTypes = compute::vector<char>(overallSize, m_context);
+        m_oldLegTypes = compute::vector<char>(overallSize, m_context);
         m_penalties = compute::vector<float>(m_populationSize, m_context);
         m_bestIndexes = compute::vector<unsigned int>(m_populationSize, m_context);
 
         compute::fill(m_bestIndexes.begin(), m_bestIndexes.end(), 0, m_queue);
-
-        const unsigned int overallSize = solutionsSize * m_populationSize;
 
         m_randomValues = compute::vector<float>(overallSize, m_context);
 
@@ -145,6 +148,9 @@ namespace in
 
     void GeneticAlgorithm::calculatePenalties()
     {
+        compute::copy(m_startingHorizontalGrid.begin(), m_startingHorizontalGrid.end(), m_horizontalGrid.begin(), m_queue);
+        compute::copy(m_startingVerticalGrid.begin(), m_startingVerticalGrid.end(), m_verticalGrid.begin(), m_queue);
+
         const std::string source = krnl::getGlobalRoutingFunctions() + krnl::getPlaceAndCalculatePenalty();
 
         compute::program program = compute::program::create_with_source(source, m_context);
@@ -183,12 +189,22 @@ namespace in
     {
         compute::iota(m_bestIndexes.begin(), m_bestIndexes.end(), 0, m_queue);
         compute::sort_by_key(m_penalties.begin(), m_penalties.end(), m_bestIndexes.begin(), m_queue);
+        
+        //std::vector<unsigned int> bestIndexes(m_bestIndexes.size());
+        //std::vector <float> penalties(m_penalties.size());
+
+        //compute::copy(m_bestIndexes.begin(), m_bestIndexes.end(), bestIndexes.begin(), m_queue);
+        //compute::copy(m_penalties.begin(), m_penalties.end(), penalties.begin(), m_queue);
+        //for (unsigned int i = 0; i < 1; ++i)
+        //{
+        //    std::cout << "i: " << i << " -> bestIndex: " << bestIndexes[i] << " -> " << penalties[i] << '\n';
+        //}
     }
 
     void GeneticAlgorithm::crossover()
     {
         compute::copy(m_legTypes.begin(), m_legTypes.end(), m_oldLegTypes.begin(), m_queue);
-
+        
         const std::string source = krnl::crossoverTwoParentsMidpoint();
 
         compute::program program = compute::program::create_with_source(source, m_context);
@@ -217,6 +233,59 @@ namespace in
 
     }
 
+    void GeneticAlgorithm::mutate()
+    {
+        compute::copy(m_legTypes.begin(), m_legTypes.end(), m_oldLegTypes.begin(), m_queue);
+
+        const std::string source = krnl::mutateChosenIndexes();
+
+        compute::program program = compute::program::create_with_source(source, m_context);
+
+        const auto timeSeed = static_cast<unsigned int>(std::chrono::duration_cast<std::chrono::seconds>
+            (std::chrono::system_clock::now().time_since_epoch()).count());
+
+        const auto randomIndexCountPerCandidate = static_cast<unsigned int>(m_mutationRate * m_netCount);
+        const auto randomsSize = static_cast<unsigned int>(randomIndexCountPerCandidate * m_populationSize);
+
+        compute::vector<float> floatHelper(randomsSize, m_context);
+        compute::vector<unsigned int> indexesToMutate(randomsSize, m_context);
+
+        compute::uniform_real_distribution floatDist;
+        compute::mt19937 generator(m_queue, timeSeed);
+        floatDist.generate(floatHelper.begin(), floatHelper.end(), generator, m_queue);
+
+        const unsigned int endIndex = m_netCount - 1;
+        const unsigned int startIndex = 0;
+
+        boost::compute::function<unsigned int(float)> scaleToRange = compute::make_function_from_source<unsigned int(float)>(
+            "scaleToRange",
+            "uint scaleToRange(float x) {return (uint)(floor(x * (" + std::to_string(endIndex - startIndex + 1) + ")) +" + std::to_string(startIndex) + ");}");
+
+        compute::transform(floatHelper.begin(), floatHelper.end(), indexesToMutate.begin(), scaleToRange, m_queue);
+
+        try
+        {
+            program.build();
+
+            compute::kernel kernel(program, "mutate_chosen_indexes");
+
+            kernel.set_arg(0, m_legTypes);
+            kernel.set_arg(1, indexesToMutate);
+            kernel.set_arg(2, randomIndexCountPerCandidate);
+            kernel.set_arg(3, m_netCount);
+
+            m_queue.enqueue_1d_range_kernel(kernel, 0, m_populationSize, 0);
+
+            m_queue.finish();
+        }
+        catch (const compute::opencl_error& e)
+        {
+            std::cerr << "OpenCL error: " << e.what() << std::endl;
+            std::cout << program.build_log() << std::endl;
+        }
+
+    }
+
 	OptimizationSolution GeneticAlgorithm::optimize()
 	{
         createRandomPopulation();
@@ -227,6 +296,18 @@ namespace in
             calculatePenalties();
             findBestSolutions();
             crossover();
+            mutate();
+        }
+
+        std::vector<unsigned int> bestIndexes(m_bestIndexes.size());
+        std::vector <float> penalties(m_penalties.size());
+
+        compute::copy(m_bestIndexes.begin(), m_bestIndexes.end(), bestIndexes.begin(), m_queue);
+        compute::copy(m_penalties.begin(), m_penalties.end(), penalties.begin(), m_queue);
+
+        for (unsigned int i = 0; i < penalties.size(); ++i)
+        {
+            std::cout << "i: " << i << " -> bestIndex: " << bestIndexes[i] << " -> " << penalties[i] << '\n';
         }
         
 		return {};

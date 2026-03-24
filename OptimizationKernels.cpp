@@ -348,9 +348,11 @@ namespace krnl
             const uint id = get_global_id(0u);
             const uint populationSize = get_global_size(0u);
 
-            const uint firstParentIndex = bestIndexes[(id*2u / populationSize)];
-            const uint secondParentIndex = bestIndexes[id % (populationSize/2u)];
+            const uint firstParentIndex = bestIndexes[(id*4u / populationSize)];
+            const uint secondParentIndex = bestIndexes[id % (populationSize/4u)];
 
+            //printf("id: %d, population size: %d, 1st: %d, 2nd: %d\n", id, populationSize, firstParentIndex, secondParentIndex);
+            
             const uint firstParentStartIndex = firstParentIndex * netCount;
             const uint secondParentStartIndex = secondParentIndex * netCount;
             const uint solStartIndex = id * netCount;
@@ -363,7 +365,7 @@ namespace krnl
 
             for (uint i = midpoint; i < netCount; ++i)
             {
-                localDoglegTypes[i] = oldDoglegTypes[secondParentIndex + i];
+                localDoglegTypes[i] = oldDoglegTypes[secondParentStartIndex + i];
             }
 
         });
@@ -406,10 +408,14 @@ namespace krnl
                 const uint indexCount,
                 const uint netCount)
         {
-            uint id = get_global_id(0);
+            const uint id = get_global_id(0);
 
-            const uint firstParentStartIndex = firstParentIndex * netCount;
-            const uint secondParentStartIndex = secondParentIndex * netCount;
+            //do not mutate best solution
+            //if (id == 0u)
+            //{
+            //    return;
+            //}
+
             const uint solStartIndex = id * netCount;
             __global char* localDoglegTypes = doglegTypes + solStartIndex;
             const uint indexesStartIndex = id * indexCount;
@@ -435,8 +441,6 @@ namespace krnl
         {
             uint id = get_global_id(0);
 
-            const uint firstParentStartIndex = firstParentIndex * netCount;
-            const uint secondParentStartIndex = secondParentIndex * netCount;
             const uint solStartIndex = id * netCount;
             __global char* localDoglegTypes = doglegTypes + solStartIndex;
 
