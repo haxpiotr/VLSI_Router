@@ -410,12 +410,6 @@ namespace krnl
         {
             const uint id = get_global_id(0);
 
-            //do not mutate best solution
-            //if (id == 0u)
-            //{
-            //    return;
-            //}
-
             const uint solStartIndex = id * netCount;
             __global char* localDoglegTypes = doglegTypes + solStartIndex;
             const uint indexesStartIndex = id * indexCount;

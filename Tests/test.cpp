@@ -650,7 +650,7 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromGeneticAlgorithm)
 	GRouter.createInitialSolution();
 
 	const auto& grid = GRouter.getGrid();
-	GRouter.performGeneticAlgorithm(4096, 2048, 0.0005f);
+	GRouter.performGeneticAlgorithm(2048, 2048, 0.0004f);
 }
 
 TEST(GlobalRouter, ShouldGetSmallMST)

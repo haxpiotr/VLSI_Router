@@ -70,7 +70,6 @@ namespace in
             const auto verticalGridSize = m_startingGrid.verticalCells.size();
             const auto horizontalGridsSize = horizontalGridSize * m_populationSize;
             const auto verticalGridsSize = verticalGridSize * m_populationSize;
-            const auto doglegTypesSize = solutionsSize * m_populationSize;
 
             {
                 m_horizontalGrid = compute::vector<int>(horizontalGridsSize, m_context);
@@ -292,7 +291,6 @@ namespace in
 
         for (unsigned int i = 0; i < m_generations; ++i)
         {
-            std::cout << "generation " << i << '\n';
             calculatePenalties();
             findBestSolutions();
             crossover();
@@ -304,12 +302,19 @@ namespace in
 
         compute::copy(m_bestIndexes.begin(), m_bestIndexes.end(), bestIndexes.begin(), m_queue);
         compute::copy(m_penalties.begin(), m_penalties.end(), penalties.begin(), m_queue);
+       
+        const auto solutionSize = m_solutionData.legTypes.size();
+        const auto bestSolutionIndex = bestIndexes[0] * solutionSize;
 
-        for (unsigned int i = 0; i < penalties.size(); ++i)
-        {
-            std::cout << "i: " << i << " -> bestIndex: " << bestIndexes[i] << " -> " << penalties[i] << '\n';
-        }
+        std::vector<char> optimizedSolution(solutionSize);
+        std::vector<DoglegType> result(solutionSize);
+        compute::copy(m_legTypes.begin() + bestSolutionIndex, m_legTypes.begin() + bestSolutionIndex + solutionSize, optimizedSolution.begin(), m_queue);
         
-		return {};
+        for (size_t i = 0; i < solutionSize; ++i)
+        {
+            result[i] = static_cast<DoglegType>(optimizedSolution[i]);
+        }
+
+		return { result , penalties[0]};
 	}
 }
