@@ -623,7 +623,7 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitione
 	GRouter.performSAParSpacePartitionedOnGPU(262144, 8000.0f, 0.995f, 1024);
 }
 
-TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitionedOnGPU_Rands_Per_T_Step)
+TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromEDA)
 {
 	in::def::Loader defLoader;
 	in::lef::Loader lefLoader;
@@ -635,7 +635,7 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitione
 	GRouter.createInitialSolution();
 
 	const auto& grid = GRouter.getGrid();
-	GRouter.performSAParSpacePartitionedOnGPUWithRandsPerIteration(1048576, 8000.0f, 0.995f, 4096);
+	GRouter.performEDA(1024, 4096,0.1f,0.002f);
 }
 
 TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromGeneticAlgorithm)
@@ -650,7 +650,22 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromGeneticAlgorithm)
 	GRouter.createInitialSolution();
 
 	const auto& grid = GRouter.getGrid();
-	GRouter.performGeneticAlgorithm(2048, 2048, 0.0004f);
+	GRouter.performGeneticAlgorithm(512, 2048, 0.0004f);
+}
+
+TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromGeneticAlgorithmRandRatio)
+{
+	in::def::Loader defLoader;
+	in::lef::Loader lefLoader;
+	const auto design = defLoader.get("Data/ispd18_test10.input.def");
+	const auto library = lefLoader.get("Data/ispd18_test10.input.lef");
+	in::DataTransformer transformer(library, design);
+
+	in::GlobalRouter GRouter(transformer, 100, 100);
+	GRouter.createInitialSolution();
+
+	const auto& grid = GRouter.getGrid();
+	GRouter.performGeneticAlgorithmRandRatio(1024, 1024, 0.5f, 0.0004f);
 }
 
 TEST(GlobalRouter, ShouldGetSmallMST)
@@ -903,6 +918,21 @@ TEST(TreeTransformer, Should_Get_RMST_3)
 {
 	
 	std::vector<in::point_int> points{ {1,0},{0,3},{5,2} };
+
+	const auto rmst = tree::rectinilearSteinerMST(points);
+
+	for (const auto& e : rmst.first)
+	{
+		std::cout << "(" << rmst.second[e.u].x() << ", " << rmst.second[e.u].y()
+			<< ") -> (" << rmst.second[e.v].x() << ", " << rmst.second[e.v].y()
+			<< ")\n";
+	}
+}
+
+TEST(TreeTransformer, Should_Get_RMST_4)
+{
+
+	std::vector<in::point_int> points{ {0,4},{1,1},{3,3},{4,4} };
 
 	const auto rmst = tree::rectinilearSteinerMST(points);
 

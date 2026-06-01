@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
+
+set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+
 project(HighPerformanceICRouter VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -59,6 +62,9 @@ set(LIB_HEADERS
     "OptimizationKernels.hpp"
     "RNDPerTStepSpacePartitionedGPUSA.hpp"
     "GeneticAlgorithm.hpp"
+    "GeneticAlgorithmRandRatio.hpp"
+    "BPSO.hpp"
+    "EDA.hpp"
 )
 
 set(LIB_SOURCES
@@ -76,6 +82,9 @@ set(LIB_SOURCES
     "OptimizationKernels.cpp"
     "RNDPerTStepSpacePartitionedGPUSA.cpp"
     "GeneticAlgorithm.cpp"
+    "GeneticAlgorithmRandRatio.cpp"
+    "BPSO.cpp"
+    "EDA.cpp"
 )
 
 add_library(${PROJECT_NAME} STATIC ${LIB_SOURCES})

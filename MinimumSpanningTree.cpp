@@ -19,7 +19,8 @@ namespace tree
         {
             for (int j = i + 1; j < n; ++j)
             {
-                const int dist = std::abs(points[i].x() - points[j].x()) + std::abs(points[i].y() - points[j].y());
+                const double squared = std::pow(points[i].x() - points[j].x(),2) + std::pow(points[i].y() - points[j].y(), 2);
+                const double dist = std::sqrt(squared);
                 boost::add_edge(i, j, EdgeWeightProperty(dist), g);
             }
         }

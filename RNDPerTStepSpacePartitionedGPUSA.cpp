@@ -6,6 +6,7 @@
 #include <boost/compute/random/mersenne_twister_engine.hpp>
 #include <boost/compute/random/uniform_int_distribution.hpp>
 #include <boost/compute/random/uniform_real_distribution.hpp>
+#include <boost/compute/random/threefry_engine.hpp>
 #include <boost/compute/algorithm/min_element.hpp>
 
 namespace in
@@ -64,7 +65,7 @@ namespace in
                 "scaleToRange",
                 "uint scaleToRange(float x) {return (uint)(floor(x * (" + std::to_string(endIndex - startIndex + 1) + ")) +" + std::to_string(startIndex) + ");}");
 
-            compute::mt19937 generator(m_queue, timeSeed);
+            compute::threefry_engine<> generator(m_queue, timeSeed);
             compute::uniform_real_distribution floatDist;
             float T = m_initialTemperature;
 

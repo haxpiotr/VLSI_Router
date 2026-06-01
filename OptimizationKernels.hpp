@@ -13,4 +13,9 @@ namespace krnl
     std::string crossoverTwoParentsProbability();
     std::string mutateChosenIndexes();
     std::string mutateWithProbability();
+    std::string updateParticles();
+    std::string calculateVelocities();
+    std::string calculateTransferFunction();
+    std::string createCopyMask();
+    std::string createUpdatedSolutions();
 }

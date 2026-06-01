@@ -9,6 +9,8 @@
 
 #include "RNDPerTStepSpacePartitionedGPUSA.hpp"
 #include "GeneticAlgorithm.hpp"
+#include "GeneticAlgorithmRandRatio.hpp"
+#include "EDA.hpp"
 
 namespace in
 {
@@ -37,7 +39,7 @@ namespace in
 	{
 		std::map<int, int> hist;
 
-		for (const auto& net : m_netlist) 
+		for (const auto& net : m_netlist)
 		{
 			hist[net.second.size()]++;
 		}
@@ -70,7 +72,7 @@ namespace in
 			{
 				continue;
 			}
-			
+
 			m_twoPointNets.push_back(net);
 		}
 
@@ -115,7 +117,7 @@ namespace in
 			NetSolution solution;
 			solution.endpoints = { {m_nonOptimizationData.globalNetStartsX[i],
 				m_nonOptimizationData.globalNetStartsY[i]},
-				{m_nonOptimizationData.globalNetEndsX[i], 
+				{m_nonOptimizationData.globalNetEndsX[i],
 				m_nonOptimizationData.globalNetEndsY[i]} };
 			solution.name = m_nonOptimizationData.netNames[i];
 			solution.type = m_nonOptimizationData.legTypes[i];
@@ -123,12 +125,12 @@ namespace in
 			const auto dogleg = route(solution);
 			for (int i = dogleg.horizontalSegment.first.x(); i <= dogleg.horizontalSegment.second.x(); ++i)
 			{
-				auto& cell = m_grid.horizontalCells[m_globalGrid.getIndexHorizontal({i,dogleg.horizontalSegment.first.y() })];
+				auto& cell = m_grid.horizontalCells[m_globalGrid.getIndexHorizontal({ i,dogleg.horizontalSegment.first.y() })];
 				cell.congestion++;
 			}
 			for (int i = dogleg.verticalSegment.first.y(); i <= dogleg.verticalSegment.second.y(); ++i)
 			{
-				auto& cell = m_grid.verticalCells[m_globalGrid.getIndexVertical({dogleg.verticalSegment.first.x(),i})];
+				auto& cell = m_grid.verticalCells[m_globalGrid.getIndexVertical({ dogleg.verticalSegment.first.x(),i })];
 				cell.congestion++;
 			}
 		}
@@ -247,8 +249,8 @@ namespace in
 	}
 
 	void GlobalRouter::performSA(
-		size_t maxIterations, 
-		float initialTemperature, 
+		size_t maxIterations,
+		float initialTemperature,
 		float coolingRate)
 	{
 		m_solver = std::make_unique<SeqSA>(
@@ -268,8 +270,8 @@ namespace in
 	}
 
 	void GlobalRouter::performSAPar(
-		size_t maxIterations, 
-		float initialTemperature, 
+		size_t maxIterations,
+		float initialTemperature,
 		float coolingRate)
 	{
 		m_solver = std::make_unique<ParSA>(
@@ -353,6 +355,28 @@ namespace in
 		m_solver = std::make_unique<GeneticAlgorithm>(m_globalGrid, m_grid, m_optimizationData, generations, populationSize, mutationRate);
 
 		std::cout << "Initialized GeneticAlgorithmon\n";
+
+		m_optimizationResult = m_solver->optimize();
+
+		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
+	}
+
+	void GlobalRouter::performGeneticAlgorithmRandRatio(unsigned int generations, unsigned int populationSize, float crossoverRate, float mutationRate)
+	{
+		m_solver = std::make_unique<GeneticAlgorithmRandRatio>(m_globalGrid, m_grid, m_optimizationData, generations, populationSize,crossoverRate, mutationRate);
+
+		std::cout << "Initialized GeneticAlgorithmon\n";
+
+		m_optimizationResult = m_solver->optimize();
+
+		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
+	}
+
+	void GlobalRouter::performEDA(unsigned int generations, unsigned int populationSize, float alpha, float limit)
+	{
+		m_solver = std::make_unique<EDA>(m_globalGrid, m_grid, m_optimizationData, generations, populationSize, alpha, limit);
+
+		std::cout << "Initialized EDA\n";
 
 		m_optimizationResult = m_solver->optimize();
 

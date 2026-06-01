@@ -98,7 +98,7 @@ namespace in
 		std::pair<std::string, std::string> bName;
 		point_int a;
 		point_int b;
-		int weight;
+		double weight;
 	};
 
 	struct TreeNet

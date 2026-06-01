@@ -8,7 +8,7 @@
 namespace tree
 {
 
-	using EdgeWeightProperty = boost::property<boost::edge_weight_t, int>;
+	using EdgeWeightProperty = boost::property<boost::edge_weight_t, double>;
 	using Graph = boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS, boost::no_property, EdgeWeightProperty>;
 	using EdgeDescriptor = boost::graph_traits<Graph>::edge_descriptor;
 
@@ -18,14 +18,14 @@ namespace tree
     {
         size_t u;
         size_t v;
-        int weight;
+        double weight;
     };
 
     struct ResultSegment
     {
         Point a;
         Point b;
-        int weight;
+        double weight;
     };
 
     std::vector<ResultEdge> rectilinearMST(const std::vector<Point>& points);

@@ -1,4 +1,4 @@
-#include "GeneticAlgorithm.hpp"
+#include "GeneticAlgorithmRandRatio.hpp"
 
 #include "OptimizationKernels.hpp"
 
@@ -7,18 +7,20 @@
 
 namespace in
 {
-	GeneticAlgorithm::GeneticAlgorithm(const GlobalRoutingGrid& globalGrid,
-		const GlobalRoutingCells& startingGrid,
+    GeneticAlgorithmRandRatio::GeneticAlgorithmRandRatio(const GlobalRoutingGrid& globalGrid,
+        const GlobalRoutingCells& startingGrid,
         const OptimizationRoutingData& solutionData,
-		unsigned int generations,
-		unsigned int populationSize,
-        float mutationRate) : 
+        unsigned int generations,
+        unsigned int populationSize,
+        float crossoverRate,
+        float mutationRate) :
         m_globalRoutingGrid{ globalGrid },
-        m_startingGrid{ startingGrid }, 
+        m_startingGrid{ startingGrid },
         m_solutionData{ solutionData },
-        m_generations {generations},
+        m_generations{ generations },
         m_populationSize{ populationSize },
-        m_mutationRate{mutationRate}
+        m_crossoverRate{ crossoverRate },
+        m_mutationRate{ mutationRate }
     {
         m_device = compute::system::default_device();
         m_context = compute::context(m_device);
@@ -28,7 +30,7 @@ namespace in
         initDeviceData();
     }
 
-    void GeneticAlgorithm::initDeviceData()
+    void GeneticAlgorithmRandRatio::initDeviceData()
     {
         const auto solutionsSize = m_netCount;
         const unsigned int overallSize = solutionsSize * m_populationSize;
@@ -109,7 +111,7 @@ namespace in
         }
     }
 
-    void GeneticAlgorithm::createRandomPopulation()
+    void GeneticAlgorithmRandRatio::createRandomPopulation()
     {
         const std::string source = krnl::getGlobalRoutingFunctions() + krnl::getCreateRandomSolution();
 
@@ -143,7 +145,7 @@ namespace in
         }
     }
 
-    void GeneticAlgorithm::calculatePenalties()
+    void GeneticAlgorithmRandRatio::calculatePenalties()
     {
         compute::copy(m_startingHorizontalGrid.begin(), m_startingHorizontalGrid.end(), m_horizontalGrid.begin(), m_queue);
         compute::copy(m_startingVerticalGrid.begin(), m_startingVerticalGrid.end(), m_verticalGrid.begin(), m_queue);
@@ -182,17 +184,22 @@ namespace in
         }
     }
 
-    void GeneticAlgorithm::findBestSolutions()
+    void GeneticAlgorithmRandRatio::findBestSolutions()
     {
         compute::iota(m_bestIndexes.begin(), m_bestIndexes.end(), 0, m_queue);
         compute::sort_by_key(m_penalties.begin(), m_penalties.end(), m_bestIndexes.begin(), m_queue);
     }
 
-    void GeneticAlgorithm::crossover()
+    void GeneticAlgorithmRandRatio::crossover()
     {
         compute::copy(m_legTypes.begin(), m_legTypes.end(), m_oldLegTypes.begin(), m_queue);
-        
-        const std::string source = krnl::crossoverTwoParentsMidpoint();
+        const auto timeSeed = static_cast<unsigned int>(std::chrono::duration_cast<std::chrono::seconds>
+            (std::chrono::system_clock::now().time_since_epoch()).count());
+        compute::uniform_real_distribution floatDist;
+        compute::threefry_engine generator(m_queue, timeSeed);
+        floatDist.generate(m_randomValues.begin(), m_randomValues.end(), generator, m_queue);
+
+        const std::string source = krnl::crossoverTwoParentsProbability();
 
         compute::program program = compute::program::create_with_source(source, m_context);
 
@@ -200,13 +207,14 @@ namespace in
         {
             program.build();
 
-            compute::kernel kernel(program, "crossover_two_parents_midpoint");
+            compute::kernel kernel(program, "crossover_two_parents_probability");
 
             kernel.set_arg(0, m_oldLegTypes);
             kernel.set_arg(1, m_legTypes);
             kernel.set_arg(2, m_bestIndexes);
-            kernel.set_arg(3, m_netCount/2u);
-            kernel.set_arg(4, m_netCount);
+            kernel.set_arg(3, m_crossoverRate);
+            kernel.set_arg(4, m_randomValues);
+            kernel.set_arg(5, m_netCount);
 
             m_queue.enqueue_1d_range_kernel(kernel, 0, m_populationSize, 0);
 
@@ -220,45 +228,30 @@ namespace in
 
     }
 
-    void GeneticAlgorithm::mutate()
+    void GeneticAlgorithmRandRatio::mutate()
     {
         compute::copy(m_legTypes.begin(), m_legTypes.end(), m_oldLegTypes.begin(), m_queue);
 
-        const std::string source = krnl::mutateChosenIndexes();
+        const std::string source = krnl::mutateWithProbability();
 
         compute::program program = compute::program::create_with_source(source, m_context);
 
         const auto timeSeed = static_cast<unsigned int>(std::chrono::duration_cast<std::chrono::seconds>
             (std::chrono::system_clock::now().time_since_epoch()).count());
 
-        const auto randomIndexCountPerCandidate = static_cast<unsigned int>(m_mutationRate * m_netCount);
-        const auto randomsSize = static_cast<unsigned int>(randomIndexCountPerCandidate * m_populationSize);
-
-        compute::vector<float> floatHelper(randomsSize, m_context);
-        compute::vector<unsigned int> indexesToMutate(randomsSize, m_context);
-
         compute::uniform_real_distribution floatDist;
         compute::threefry_engine generator(m_queue, timeSeed);
-        floatDist.generate(floatHelper.begin(), floatHelper.end(), generator, m_queue);
-
-        const unsigned int endIndex = m_netCount - 1;
-        const unsigned int startIndex = 0;
-
-        boost::compute::function<unsigned int(float)> scaleToRange = compute::make_function_from_source<unsigned int(float)>(
-            "scaleToRange",
-            "uint scaleToRange(float x) {return (uint)(floor(x * (" + std::to_string(endIndex - startIndex + 1) + ")) +" + std::to_string(startIndex) + ");}");
-
-        compute::transform(floatHelper.begin(), floatHelper.end(), indexesToMutate.begin(), scaleToRange, m_queue);
+        floatDist.generate(m_randomValues.begin(), m_randomValues.end(), generator, m_queue);
 
         try
         {
             program.build();
 
-            compute::kernel kernel(program, "mutate_chosen_indexes");
+            compute::kernel kernel(program, "mutate_with_probability");
 
             kernel.set_arg(0, m_legTypes);
-            kernel.set_arg(1, indexesToMutate);
-            kernel.set_arg(2, randomIndexCountPerCandidate);
+            kernel.set_arg(1, m_randomValues);
+            kernel.set_arg(2, m_mutationRate);
             kernel.set_arg(3, m_netCount);
 
             m_queue.enqueue_1d_range_kernel(kernel, 0, m_populationSize, 0);
@@ -273,8 +266,8 @@ namespace in
 
     }
 
-	OptimizationSolution GeneticAlgorithm::optimize()
-	{
+    OptimizationSolution GeneticAlgorithmRandRatio::optimize()
+    {
         createRandomPopulation();
 
         for (unsigned int i = 0; i < m_generations; ++i)
@@ -292,19 +285,19 @@ namespace in
 
         compute::copy(m_bestIndexes.begin(), m_bestIndexes.end(), bestIndexes.begin(), m_queue);
         compute::copy(m_penalties.begin(), m_penalties.end(), penalties.begin(), m_queue);
-       
+
         const auto solutionSize = m_solutionData.legTypes.size();
         const auto bestSolutionIndex = bestIndexes[0] * solutionSize;
 
         std::vector<char> optimizedSolution(solutionSize);
         std::vector<DoglegType> result(solutionSize);
         compute::copy(m_legTypes.begin() + bestSolutionIndex, m_legTypes.begin() + bestSolutionIndex + solutionSize, optimizedSolution.begin(), m_queue);
-        
+
         for (size_t i = 0; i < solutionSize; ++i)
         {
             result[i] = static_cast<DoglegType>(optimizedSolution[i]);
         }
 
-		return { result , penalties[0]};
-	}
+        return { result , penalties[0] };
+    }
 }

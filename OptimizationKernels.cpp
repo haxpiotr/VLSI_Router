@@ -135,28 +135,28 @@ namespace krnl
             float penaltyDiffAfterAddition = addSolution(horizontalGrid, verticalGrid, cols, rows, netStart, netEnd, newType);
             return penaltyDiffAfterSubstraction + penaltyDiffAfterAddition;
         });
-        
+
     }
 
     std::string getSABulkRandomsWithTemparatureSteps()
     {
         return BOOST_COMPUTE_STRINGIZE_SOURCE(
-        __kernel void sa_bulk_generated_randoms(
-            __global const int2 * netStarts,
-            __global const int2 * netEnds,
-            __global char* doglegTypes,
-            __global int* horizontalGrid,
-            __global int* verticalGrid,
-            __global float* penalties,
-            __global const uint * randomIndex,
-            __global const float* randomValue,
-            __global const float* temperatures,
-            const uint netCount,
-            const uint cols,
-            const uint rows,
-            const uint spaces,
-            const uint iterationSize,
-            const uint temperatureSteps)
+            __kernel void sa_bulk_generated_randoms(
+                __global const int2 * netStarts,
+                __global const int2 * netEnds,
+                __global char* doglegTypes,
+                __global int* horizontalGrid,
+                __global int* verticalGrid,
+                __global float* penalties,
+                __global const uint * randomIndex,
+                __global const float* randomValue,
+                __global const float* temperatures,
+                const uint netCount,
+                const uint cols,
+                const uint rows,
+                const uint spaces,
+                const uint iterationSize,
+                const uint temperatureSteps)
         {
             uint id = get_global_id(0);
             uint threadCount = get_global_size(0);
@@ -287,16 +287,36 @@ namespace krnl
                 __global char* doglegTypes,
                 __global float* randomValues,
                 const uint netCount)
+        {
+            uint id = get_global_id(0);
+            const uint solStartIndex = id * netCount;
+            __global char* localDoglegTypes = doglegTypes + solStartIndex;
+            __global float* localRandomValues = randomValues + solStartIndex;
+            for (uint i = 0; i < netCount; ++i)
             {
-                uint id = get_global_id(0);
-                const uint solStartIndex = id * netCount;
-                __global char* localDoglegTypes = doglegTypes + solStartIndex;
-                __global float* localRandomValues = randomValues + solStartIndex;
-                for (uint i = 0; i < netCount; ++i)
-                {
-                    localDoglegTypes[i] = (uint)step(0.5f, localRandomValues[i]);
-                }
-            });
+                localDoglegTypes[i] = (uint)step(0.5f, localRandomValues[i]);
+            }
+        });
+    }
+
+    std::string createUpdatedSolutions()
+    {
+        return BOOST_COMPUTE_STRINGIZE_SOURCE(
+            __kernel void create_updated_solutions(
+                __global char* doglegTypes,
+                __global const float* probabilities,
+                __global const float* randomValues,
+                const uint netCount)
+        {
+            uint id = get_global_id(0);
+            const uint solStartIndex = id * netCount;
+            __global char* localDoglegTypes = doglegTypes + solStartIndex;
+            __global const float* localRandomValues = randomValues + solStartIndex;
+            for (uint i = 0; i < netCount; ++i)
+            {
+                localDoglegTypes[i] = (uint)step( 1.0f - probabilities[i], localRandomValues[i]);
+            }
+        });
     }
 
     std::string getPlaceAndCalculatePenalty()
@@ -323,7 +343,7 @@ namespace krnl
 
             const uint solStartIndex = id * netCount;
             __global char* localDoglegTypes = doglegTypes + solStartIndex;
-            
+
             float penalty = 0;
 
             for (uint i = 0; i < netCount; ++i)
@@ -341,18 +361,16 @@ namespace krnl
             __kernel void crossover_two_parents_midpoint(
                 __global const char* oldDoglegTypes,
                 __global char* doglegTypes,
-                __global const uint* bestIndexes,
+                __global const uint * bestIndexes,
                 const uint midpoint,
                 const uint netCount)
         {
             const uint id = get_global_id(0u);
             const uint populationSize = get_global_size(0u);
 
-            const uint firstParentIndex = bestIndexes[(id*4u / populationSize)];
-            const uint secondParentIndex = bestIndexes[id % (populationSize/4u)];
+            const uint firstParentIndex = bestIndexes[(id * 4u / populationSize)];
+            const uint secondParentIndex = bestIndexes[id % (populationSize / 4u)];
 
-            //printf("id: %d, population size: %d, 1st: %d, 2nd: %d\n", id, populationSize, firstParentIndex, secondParentIndex);
-            
             const uint firstParentStartIndex = firstParentIndex * netCount;
             const uint secondParentStartIndex = secondParentIndex * netCount;
             const uint solStartIndex = id * netCount;
@@ -377,15 +395,15 @@ namespace krnl
             __kernel void crossover_two_parents_probability(
                 __global const char* oldDoglegTypes,
                 __global char* doglegTypes,
-                const uint firstParentIndex,
-                const uint secondParentIndex,
+                __global const uint* bestIndexes,
                 const float threshold,
                 __global const float* randomValues,
                 const uint netCount)
         {
             uint id = get_global_id(0);
             uint threadCount = get_global_size(0);
-
+            const uint firstParentIndex = bestIndexes[0u];
+            const uint secondParentIndex = bestIndexes[id];
             const uint firstParentStartIndex = firstParentIndex * netCount;
             const uint secondParentStartIndex = secondParentIndex * netCount;
             const uint solStartIndex = id * netCount;
@@ -393,7 +411,7 @@ namespace krnl
 
             for (uint i = 0; i < netCount; ++i)
             {
-                localDoglegTypes[i] = step(threshold, randomValues[solStartIndex + i]) == 0.0f ? oldDoglegTypes[firstParentStartIndex + i] : oldDoglegTypes[secondParentIndex + i];
+                localDoglegTypes[i] = step(threshold, randomValues[solStartIndex + i]) == 0.0f ? oldDoglegTypes[firstParentStartIndex + i] : oldDoglegTypes[secondParentStartIndex + i];
             }
 
         });
@@ -404,7 +422,7 @@ namespace krnl
         return BOOST_COMPUTE_STRINGIZE_SOURCE(
             __kernel void mutate_chosen_indexes(
                 __global char* doglegTypes,
-                __global const uint* chosenIndexes,
+                __global const uint * chosenIndexes,
                 const uint indexCount,
                 const uint netCount)
         {
@@ -447,4 +465,97 @@ namespace krnl
         });
     }
 
+    std::string updateParticles()
+    {
+        return BOOST_COMPUTE_STRINGIZE_SOURCE(
+            __kernel void update_particles(
+                __global char* doglegTypes,
+                __global const float* sigmoids,
+                __global const float* randomValues,
+                const unsigned int netCount
+            )
+        {
+            const uint id = get_global_id(0);
+
+            const uint solStartIndex = id * netCount;
+            __global char* localDoglegTypes = doglegTypes + solStartIndex;
+            __global const float* localRandomValues = randomValues + solStartIndex;
+            __global const float* localSigmoid = sigmoids + solStartIndex;
+
+            unsigned int flips = 0;
+            for (uint i = 0; i < netCount; ++i)
+            {
+                const char currentType = localDoglegTypes[i];
+                localDoglegTypes[i] = (char)abs(currentType - (char)step(localRandomValues[i], localSigmoid[i]));
+                if (currentType != localDoglegTypes[i])
+                {
+                    flips++;
+                }
+            }
+            
+            printf("flips in id %u:%d\n", id, flips);
+        }
+        );
+    }
+
+    std::string calculateVelocities()
+    {
+        return BOOST_COMPUTE_STRINGIZE_SOURCE(
+            __kernel void calculate_velocities(
+                __global char* doglegTypes,
+                __global const char* bestDoglegTypes,
+                __global const unsigned int* bestIndexes,
+                __global float* velocities,
+                __global const float* randoms1,
+                __global const float* randoms2,
+                const float w,
+                const float c1,
+                const float c2,
+                const float maxV,
+                const unsigned int netCount
+            )
+        {
+            const uint id = get_global_id(0);
+            const uint solStartIndex = id * netCount;
+            __global char* localDoglegTypes = doglegTypes + solStartIndex;
+            __global const char* localGlobalBestDoglegTypes = bestDoglegTypes + bestIndexes[0] * netCount;
+            __global const char* localParticleBestDoglegTypes = bestDoglegTypes + solStartIndex;
+            __global float* localVelocities = velocities + solStartIndex;
+            __global float* localRandoms1 = randoms1 + solStartIndex;
+            __global float* localRandoms2 = randoms2 + solStartIndex;
+
+            for (uint i = 0; i < netCount; ++i)
+            {
+                const char globalPosDiff = localGlobalBestDoglegTypes[i] - localDoglegTypes[i];
+                const char localPosDiff = localParticleBestDoglegTypes[i] - localDoglegTypes[i];
+                const float newVelocity = w * localVelocities[i] + c1 * localRandoms1[i] * (float)localPosDiff + c2 * localRandoms2[i] * (float)globalPosDiff;
+
+                localVelocities[i] = clamp(newVelocity, -maxV, maxV);
+            }
+        });
+    }
+
+    std::string createCopyMask()
+    {
+        return BOOST_COMPUTE_STRINGIZE_SOURCE(
+            __kernel void create_copy_mask(
+                __global char* copyMask,
+                __global const float* oldPenalties,
+                __global const float* newPenalties,
+                const unsigned int netCount)
+        {
+            const uint id = get_global_id(0);
+            const uint solStartIndex = id * netCount;
+            __global char* localCopyMask = copyMask + solStartIndex;
+
+            const float penaltyDiff = oldPenalties[id] - newPenalties[id];
+            const uint clampedDiff = (uint)(penaltyDiff >= 0.0f);
+
+            for (uint i = 0; i < netCount; ++i)
+            {
+                localCopyMask[i] = clampedDiff;
+            }
+        }
+        );
+    }
 }
