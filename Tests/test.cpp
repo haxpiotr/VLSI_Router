@@ -576,7 +576,7 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlist_And_Perform_Seq_SA)
     GRouter.createInitialSolution();
     
     const auto& grid = GRouter.getGrid();
-    GRouter.performSA(102400, 8000.0f, 0.995f);
+    GRouter.performSA(102400, 8000.0f, 0.995f, 0.002f);
 }
 
 TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSA)
@@ -590,7 +590,7 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSA)
     in::GlobalRouter GRouter(transformer, 100, 100);
     GRouter.createInitialSolution();
     const auto& grid = GRouter.getGrid();
-    GRouter.performSAPar(102400, 8000.0f, 0.995f);
+    GRouter.performSAPar(102400, 8000.0f, 0.995f, 0.002f, 16);
 }
 
 TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitioned)
@@ -605,7 +605,7 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitione
     GRouter.createInitialSolution();
 
 	const auto& grid = GRouter.getGrid();
-    GRouter.performSAParSpacePartitioned(262144, 8000.0f, 0.995f,16);
+    GRouter.performSAParSpacePartitioned(262144, 8000.0f, 0.995f, 0.002f,16);
 }
 
 TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitionedOnGPU)
@@ -620,7 +620,7 @@ TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromParallelSASpacePartitione
 	GRouter.createInitialSolution();
 
 	const auto& grid = GRouter.getGrid();
-	GRouter.performSAParSpacePartitionedOnGPU(262144, 8000.0f, 0.995f, 1024);
+	GRouter.performSAParSpacePartitionedOnGPU(262144, 8000.0f, 0.995f,0.002f, 1024);
 }
 
 TEST(GlobalRouter, ShouldGetEvenBiggerNetlistAndPerfromEDA)

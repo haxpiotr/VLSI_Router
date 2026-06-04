@@ -144,3 +144,13 @@ endif()
 find_package(GTest REQUIRED)
 enable_testing()
 add_subdirectory(Tests)
+
+set(EXE_NAME "VLSI_Global_Router")
+set(EXE_SOURCE "main.cpp")
+
+find_package(Boost REQUIRED COMPONENTS program_options)
+
+add_executable(${EXE_NAME} ${EXE_SOURCE})
+target_link_libraries(${EXE_NAME} PUBLIC 
+    ${PROJECT_NAME} Boost::program_options
+)

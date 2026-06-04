@@ -13,6 +13,7 @@ namespace in
 		float initialTemperature,
 		float coolingRate,
 		float eps,
+		int threads,
 		size_t maxIterations)
 		: SeqSA(
 			globalGrid,
@@ -21,7 +22,8 @@ namespace in
 			initialTemperature,
 			coolingRate,
 			eps,
-			maxIterations)
+			maxIterations), 
+		m_threads{ threads }
 	{
 	}
 
@@ -43,7 +45,8 @@ namespace in
 				thread_local auto localSolutions = globalBestSolutions;
 				
 				float localCurrentPenalty = localGrid.penalty;
-				const auto threadCount = omp_get_num_threads();
+				auto threadCount = std::min(omp_get_num_threads(), m_threads);
+                threadCount = std::max(threadCount, 1);
 				
 				for(size_t i = 0; i < m_maxIterations / threadCount; ++i)
 				{

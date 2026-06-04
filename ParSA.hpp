@@ -15,7 +15,11 @@ namespace in
                                         float initialTemperature,
                                         float coolingRate,
                                         float eps,
+                                        int threads,
                                         size_t maxIterations);
         OptimizationSolution optimize() override;
+
+    private:
+        int m_threads{ 0 };
     };
 }

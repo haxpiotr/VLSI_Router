@@ -251,7 +251,8 @@ namespace in
 	void GlobalRouter::performSA(
 		size_t maxIterations,
 		float initialTemperature,
-		float coolingRate)
+		float coolingRate,
+		float eps)
 	{
 		m_solver = std::make_unique<SeqSA>(
 			m_globalGrid,
@@ -259,7 +260,7 @@ namespace in
 			m_optimizationData,
 			initialTemperature,
 			coolingRate,
-			0.001f,
+			eps,
 			maxIterations);
 
 		std::cout << "Initialized simulated annealing on: " << m_optimizationData.netNames.size() << std::endl;
@@ -272,7 +273,9 @@ namespace in
 	void GlobalRouter::performSAPar(
 		size_t maxIterations,
 		float initialTemperature,
-		float coolingRate)
+		float coolingRate,
+		float eps,
+		int threads)
 	{
 		m_solver = std::make_unique<ParSA>(
 			m_globalGrid,
@@ -280,7 +283,8 @@ namespace in
 			m_optimizationData,
 			initialTemperature,
 			coolingRate,
-			0.001f,
+			eps,
+			threads,
 			maxIterations);
 
 		std::cout << "Initialized parallel simulated annealing on: " << m_optimizationData.netNames.size() << std::endl;
@@ -290,7 +294,7 @@ namespace in
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
 	}
 
-	void GlobalRouter::performSAParSpacePartitioned(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces)
+	void GlobalRouter::performSAParSpacePartitioned(size_t maxIterations, float initialTemperature, float coolingRate, float eps, size_t spaces)
 	{
 		m_solver = std::make_unique<SpacePartitionedSA>(
 			m_globalGrid,
@@ -298,7 +302,7 @@ namespace in
 			m_optimizationData,
 			initialTemperature,
 			coolingRate,
-			0.001f,
+			eps,
 			maxIterations,
 			spaces);
 
@@ -310,7 +314,7 @@ namespace in
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
 	}
 
-	void GlobalRouter::performSAParSpacePartitionedOnGPU(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces)
+	void GlobalRouter::performSAParSpacePartitionedOnGPU(size_t maxIterations, float initialTemperature, float coolingRate, float eps, size_t spaces)
 	{
 		m_solver = std::make_unique<SpacePartitionedGPUSA>(
 			m_globalGrid,
@@ -318,7 +322,7 @@ namespace in
 			m_optimizationData,
 			initialTemperature,
 			coolingRate,
-			0.001f,
+			eps,
 			maxIterations,
 			spaces);
 
@@ -330,7 +334,7 @@ namespace in
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
 	}
 
-	void GlobalRouter::performSAParSpacePartitionedOnGPUWithRandsPerIteration(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces)
+	void GlobalRouter::performSAParSpacePartitionedOnGPUWithRandsPerIteration(size_t maxIterations, float initialTemperature, float coolingRate, float eps, size_t spaces)
 	{
 		m_solver = std::make_unique<RNDPerTStepSpacePartitionedGPUSA>(
 			m_globalGrid,
@@ -338,7 +342,7 @@ namespace in
 			m_optimizationData,
 			initialTemperature,
 			coolingRate,
-			0.001f,
+			eps,
 			maxIterations,
 			spaces);
 
@@ -353,8 +357,6 @@ namespace in
 	void GlobalRouter::performGeneticAlgorithm(unsigned int generations, unsigned int populationSize, float mutationRate)
 	{
 		m_solver = std::make_unique<GeneticAlgorithm>(m_globalGrid, m_grid, m_optimizationData, generations, populationSize, mutationRate);
-
-		std::cout << "Initialized GeneticAlgorithmon\n";
 
 		m_optimizationResult = m_solver->optimize();
 

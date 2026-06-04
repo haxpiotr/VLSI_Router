@@ -45,17 +45,49 @@ public:
 	const GlobalSolutions& getDoglegSolutions() const;
 	const GlobalRoutingCells& getGrid() const;
 
-	void performSA(size_t maxIterations, float initialTemperature, float coolingRate);
-	void performSAPar(size_t maxIterations, float initialTemperature, float coolingRate);
-	void performSAParSpacePartitioned(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces);
-	void performSAParSpacePartitionedOnGPU(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces);
-	void performSAParSpacePartitionedOnGPUWithRandsPerIteration(size_t maxIterations, float initialTemperature, float coolingRate, size_t spaces);
-	void performGeneticAlgorithm(unsigned int generations, unsigned int populationSize, float mutationRate);
-    void performGeneticAlgorithmRandRatio(unsigned int generations,
-      unsigned int populationSize,
-      float crossoverRate,
-      float mutationRate);
-	void performEDA(unsigned int generations, unsigned int populationSize, float alpha, float limit);
+	void performSA(
+		size_t maxIterations,
+		float initialTemperature,
+		float coolingRate,
+		float eps);
+	void performSAPar(
+		size_t maxIterations,
+		float initialTemperature,
+		float coolingRate,
+		float eps,
+		int threads);
+	void performSAParSpacePartitioned(
+		size_t maxIterations,
+		float initialTemperature,
+		float coolingRate,
+		float eps,
+		size_t spaces);
+	void performSAParSpacePartitionedOnGPU(
+		size_t maxIterations,
+		float initialTemperature,
+		float coolingRate,
+		float eps,
+		size_t spaces);
+	void performSAParSpacePartitionedOnGPUWithRandsPerIteration(
+		size_t maxIterations,
+		float initialTemperature,
+		float coolingRate,
+		float eps,
+		size_t spaces);
+	void performGeneticAlgorithm(
+		unsigned int generations,
+		unsigned int populationSize,
+		float mutationRate);
+    void performGeneticAlgorithmRandRatio(
+		unsigned int generations,
+		unsigned int populationSize,
+		float crossoverRate,
+		float mutationRate);
+	void performEDA(
+		unsigned int generations,
+		unsigned int populationSize,
+		float alpha,
+		float limit);
 
 private:
 	DataTransformer& m_dataTransformer;
