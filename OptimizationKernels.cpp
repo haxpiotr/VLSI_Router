@@ -399,9 +399,10 @@ namespace krnl
                 const uint netCount)
         {
             uint id = get_global_id(0);
-            uint threadCount = get_global_size(0);
-            const uint firstParentIndex = bestIndexes[0u];
-            const uint secondParentIndex = bestIndexes[id];
+            const uint populationSize = get_global_size(0);
+ 
+            const uint firstParentIndex = bestIndexes[(id * 4u / populationSize)];
+            const uint secondParentIndex = bestIndexes[id % (populationSize / 4u)];
             const uint firstParentStartIndex = firstParentIndex * netCount;
             const uint secondParentStartIndex = secondParentIndex * netCount;
             const uint solStartIndex = id * netCount;
@@ -450,6 +451,11 @@ namespace krnl
                 const uint netCount)
         {
             uint id = get_global_id(0);
+
+            if (id == 0)
+            {
+                return;
+            }
 
             const uint solStartIndex = id * netCount;
             __global char* localDoglegTypes = doglegTypes + solStartIndex;
