@@ -54,8 +54,7 @@ namespace in
 		{
 			float temperature = m_initialTemperature;
 			thread_local const auto threadNum = omp_get_thread_num();
-			thread_local std::random_device rd;
-			thread_local std::mt19937 gen(rd() ^ threadNum);
+			thread_local std::mt19937 gen(2027 + threadNum);
 			thread_local auto localGrid = m_startingGrid; 
 			thread_local auto localSolutions = m_spaces[threadNum];
 			const auto threadCount = m_independentSpacesSize;
