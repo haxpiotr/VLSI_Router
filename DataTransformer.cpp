@@ -62,7 +62,7 @@ namespace in
 	{
 		std::vector<std::vector<TreeNet>> localNetlists(omp_get_max_threads());
 
-#pragma omp parallel for 
+//#pragma omp parallel for 
 		for (size_t i = 0; i < m_design.nets.size(); ++i)
 		{
 			std::vector<in::point_int> points;
@@ -75,7 +75,7 @@ namespace in
 				compIdPairs.push_back(pin.compIdPair);
 
 			}
-			const auto mst = tree::rectilinearMST(points);
+			const auto mst = tree::getTSP(points);
 			
 			TreeNet tNet;
 			tNet.name = m_design.nets[i].name;
@@ -109,7 +109,7 @@ namespace in
 	{
 		std::vector<std::vector<SteinerTreeNet>> localNets(omp_get_max_threads());
 
-#pragma omp parallel for 
+//#pragma omp parallel for 
 		for (size_t i = 0; i < m_design.nets.size(); ++i)
 		{
 			std::vector<in::point_int> points;

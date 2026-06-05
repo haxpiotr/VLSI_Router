@@ -52,8 +52,7 @@ namespace in
 
             std::cout << "RANDOMS SIZE: " << randomsSize << '\n';
 
-            const auto timeSeed = static_cast<unsigned int>(std::chrono::duration_cast<std::chrono::seconds>
-                (std::chrono::system_clock::now().time_since_epoch()).count());
+            const auto timeSeed = 2027;
 
             const unsigned int startIndex = std::sqrt(m_spaces.size());
             const unsigned int endIndex = m_initialSolutions.legTypes.size();
@@ -84,8 +83,7 @@ namespace in
             kernel.set_arg(9, static_cast<unsigned int>(solutionsSize));
             kernel.set_arg(10, static_cast<unsigned int>(m_globalGrid.getCols()));
             kernel.set_arg(11, static_cast<unsigned int>(m_globalGrid.getRows()));
-            kernel.set_arg(12, static_cast<unsigned int>(m_spaces.size()));
-            kernel.set_arg(13, iterationSize);
+            kernel.set_arg(12, iterationSize);
 
             while (T > m_eps)
             {

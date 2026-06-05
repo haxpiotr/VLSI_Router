@@ -316,7 +316,7 @@ namespace in
 
 	void GlobalRouter::performSAParSpacePartitionedOnGPU(size_t maxIterations, float initialTemperature, float coolingRate, float eps, size_t spaces)
 	{
-		m_solver = std::make_unique<SpacePartitionedGPUSA>(
+		m_solver = std::make_unique<RNDPerTStepSpacePartitionedGPUSA>(
 			m_globalGrid,
 			m_grid,
 			m_optimizationData,
@@ -356,6 +356,8 @@ namespace in
 
 	void GlobalRouter::performGeneticAlgorithm(unsigned int generations, unsigned int populationSize, float mutationRate)
 	{
+		std::cout <<"Initialized GeneticAlgorithm\n";
+
 		m_solver = std::make_unique<GeneticAlgorithm>(m_globalGrid, m_grid, m_optimizationData, generations, populationSize, mutationRate);
 
 		m_optimizationResult = m_solver->optimize();

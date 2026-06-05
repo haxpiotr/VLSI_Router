@@ -227,11 +227,9 @@ namespace krnl
                 const uint netCount,
                 const uint cols,
                 const uint rows,
-                const uint spaces,
                 const uint iterationSize)
         {
             uint id = get_global_id(0);
-            uint threadCount = get_global_size(0);
 
             const uint gridSize = cols * rows;
             const uint gridStartIndex = gridSize * id;

@@ -121,7 +121,7 @@ namespace in
 
         const std::string source = krnl::getGlobalRoutingFunctions() + krnl::getSABulkRandomsWithTemparatureSteps();
 
-        const auto timeSeed = static_cast<unsigned int>(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+        const auto timeSeed = 2027;
         
         compute::program program = compute::program::create_with_source(source, m_context);
         try

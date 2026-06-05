@@ -117,8 +117,7 @@ namespace in
 
         compute::program program = compute::program::create_with_source(source, m_context);
 
-        const auto timeSeed = static_cast<unsigned int>(std::chrono::duration_cast<std::chrono::seconds>
-            (std::chrono::system_clock::now().time_since_epoch()).count());
+        const auto timeSeed = 2027;
 
         try
         {
@@ -193,8 +192,7 @@ namespace in
     void GeneticAlgorithmRandRatio::crossover()
     {
         compute::copy(m_legTypes.begin(), m_legTypes.end(), m_oldLegTypes.begin(), m_queue);
-        const auto timeSeed = static_cast<unsigned int>(std::chrono::duration_cast<std::chrono::seconds>
-            (std::chrono::system_clock::now().time_since_epoch()).count());
+        const auto timeSeed = 2027;
         compute::uniform_real_distribution floatDist;
         compute::threefry_engine generator(m_queue, timeSeed);
         floatDist.generate(m_randomValues.begin(), m_randomValues.end(), generator, m_queue);
@@ -236,8 +234,7 @@ namespace in
 
         compute::program program = compute::program::create_with_source(source, m_context);
 
-        const auto timeSeed = static_cast<unsigned int>(std::chrono::duration_cast<std::chrono::seconds>
-            (std::chrono::system_clock::now().time_since_epoch()).count());
+        const auto timeSeed = 2027;
 
         compute::uniform_real_distribution floatDist;
         compute::threefry_engine generator(m_queue, timeSeed);

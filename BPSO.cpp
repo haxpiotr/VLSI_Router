@@ -31,8 +31,7 @@ namespace in
 		m_context = compute::context(m_device);
 		m_queue = compute::command_queue(m_context, m_device);
 		m_netCount = static_cast<unsigned int>(m_solutionData.legTypes.size());
-		const auto timeSeed = static_cast<unsigned int>(std::chrono::duration_cast<std::chrono::seconds>
-			(std::chrono::system_clock::now().time_since_epoch()).count());
+		const auto timeSeed = 2027;
 		m_generator = std::make_unique<compute::mt19937>(m_queue, timeSeed);
 
 		initDeviceData();

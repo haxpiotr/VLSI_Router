@@ -1,9 +1,166 @@
 #include "MinimumSpanningTree.hpp"
 #include "NetSolution.hpp"
 #include <boost/graph/kruskal_min_spanning_tree.hpp>
+#include <boost/graph/metric_tsp_approx.hpp>
 
 namespace tree
 {
+
+    std::vector<ResultEdge> getTSP(
+        const std::vector<Point>& points,
+        const std::vector<size_t>& indices)
+    {
+        const size_t n = indices.size();
+
+        if (n < 2)
+            return {};
+
+        Graph g(n);
+
+        auto global = [&](size_t local) 
+            {
+            return indices[local];
+            };
+
+        for (size_t i = 0; i < n; ++i)
+        {
+            for (size_t j = i + 1; j < n; ++j)
+            {
+                size_t gi = global(i);
+                size_t gj = global(j);
+
+                const double dx = points[gi].x() - points[gj].x();
+                const double dy = points[gi].y() - points[gj].y();
+                const double dist = std::sqrt(dx * dx + dy * dy);
+
+                boost::add_edge(i, j, EdgeWeightProperty(dist), g);
+            }
+        }
+
+        std::vector<size_t> tour;
+        boost::metric_tsp_approx_tour(g, std::back_inserter(tour));
+
+        // --- usuń najdłuższą krawędź ---
+        double maxDist = -1.0;
+        size_t maxIndex = 0;
+
+        for (size_t i = 0; i + 1 < tour.size(); ++i)
+        {
+            size_t u = global(tour[i]);
+            size_t v = global(tour[i + 1]);
+
+            double dx = points[u].x() - points[v].x();
+            double dy = points[u].y() - points[v].y();
+            double dist = std::sqrt(dx * dx + dy * dy);
+
+            if (dist > maxDist)
+            {
+                maxDist = dist;
+                maxIndex = i;
+            }
+        }
+
+        std::vector<size_t> path;
+
+        for (size_t i = maxIndex + 1; i < tour.size() - 1; ++i)
+            path.push_back(tour[i]);
+
+        for (size_t i = 0; i <= maxIndex; ++i)
+            path.push_back(tour[i]);
+
+        std::vector<ResultEdge> result;
+
+        for (size_t i = 0; i + 1 < path.size(); ++i)
+        {
+            size_t u = global(path[i]);
+            size_t v = global(path[i + 1]);
+
+            double dx = points[u].x() - points[v].x();
+            double dy = points[u].y() - points[v].y();
+            double dist = std::sqrt(dx * dx + dy * dy);
+
+            result.push_back({ u, v, dist });
+        }
+
+        return result;
+    }
+
+    std::vector<ResultEdge> getTSP(const std::vector<Point>& points)
+    {
+        const int n = points.size();
+
+        if (n < 2)
+        {
+            return {};
+        }
+
+        Graph g(n);
+
+        for (int i = 0; i < n; ++i)
+        {
+            for (int j = i + 1; j < n; ++j)
+            {
+                const double dx = points[i].x() - points[j].x();
+                const double dy = points[i].y() - points[j].y();
+                const double dist = std::sqrt(dx * dx + dy * dy);
+
+                boost::add_edge(i, j, EdgeWeightProperty(dist), g);
+            }
+        }
+
+        std::vector<size_t> tour;
+
+        boost::metric_tsp_approx_tour(g, std::back_inserter(tour));
+
+        double maxDist = -1.0;
+        size_t maxIndex = 0;
+
+        for (size_t i = 0; i + 1 < tour.size(); ++i)
+        {
+            size_t u = tour[i];
+            size_t v = tour[i + 1];
+
+            const double dx = points[u].x() - points[v].x();
+            const double dy = points[u].y() - points[v].y();
+            const double dist = std::sqrt(dx * dx + dy * dy);
+
+            if (dist > maxDist)
+            {
+                maxDist = dist;
+                maxIndex = i;
+            }
+        }
+
+        std::vector<size_t> path;
+
+        for (size_t i = maxIndex + 1; i < tour.size() - 1; ++i)
+        {
+            path.push_back(tour[i]);
+        }
+
+        for (size_t i = 0; i <= maxIndex; ++i)
+        {
+            path.push_back(tour[i]);
+        }
+
+        std::vector<ResultEdge> result;
+
+        for (size_t i = 0; i + 1 < path.size(); ++i)
+        {
+            size_t u = path[i];
+            size_t v = path[i + 1];
+
+            const double dx = points[u].x() - points[v].x();
+            const double dy = points[u].y() - points[v].y();
+            const double dist = std::sqrt(dx * dx + dy * dy);
+
+            result.push_back(ResultEdge{ u, v, dist });
+        }
+
+        return result;
+    }
+
+
     std::vector<ResultEdge> rectilinearMST(const std::vector<Point>& points)
     {
         const int n = points.size();
@@ -204,6 +361,70 @@ namespace tree
         return neighborIt;
     }
 
+
+    std::optional<ResultEdge> findFirstBoundaryEdge(
+        const std::vector<ResultEdge>& edges)
+    {
+        if (edges.empty()) return std::nullopt;
+
+        size_t maxVertex = 0;
+        for (const auto& e : edges)
+        {
+            maxVertex = std::max({ maxVertex, e.u, e.v });
+        }
+
+        std::vector<int> degree(maxVertex + 1, 0);
+
+        for (const auto& e : edges)
+        {
+            degree[e.u]++;
+            degree[e.v]++;
+        }
+
+        for (const auto& e : edges)
+        {
+            if (degree[e.u] == 1 || degree[e.v] == 1)
+            {
+                return e;
+            }
+        }
+
+        return std::nullopt;
+    }
+
+
+    size_t findEndpointVertex(
+        const std::vector<ResultEdge>& edges,
+        const ResultEdge& edge)
+    {
+
+        size_t maxVertex = 0;
+        for (const auto& e : edges)
+        {
+            maxVertex = std::max({ maxVertex, e.u, e.v });
+        }
+
+        std::vector<int> degree(maxVertex + 1, 0);
+
+        for (const auto& e : edges)
+        {
+            degree[e.u]++;
+            degree[e.v]++;
+        }
+
+        if (degree[edge.u] == 1)
+        {
+            return edge.u;
+        }
+        else
+        {
+            return edge.v;
+        }
+    }
+
+
+
+
     std::pair<std::vector<ResultEdge>, std::vector<Point>> rectinilearSteinerMST(const std::vector<Point>& points)
     {
         if (points.size() < 2)
@@ -218,17 +439,22 @@ namespace tree
 
         auto extendedPoints = points;
 
-        auto mst = rectilinearMST(points);
+        std::unordered_set<size_t> active;
+        for (size_t i = 0; i < points.size(); ++i)
+        {
+            active.insert(i);
+        }
 
-        auto firstEdgeIt = mst.cbegin();
-        auto firstEdge = *firstEdgeIt;
+        auto tsp = getTSP(points, std::vector<size_t>(active.begin(), active.end()));
 
-        removeEdge(mst, firstEdge);
+        auto firstEdge = *findFirstBoundaryEdge(tsp);
 
-        auto neighborIt = findNeighbor(mst, firstEdge);
+        //removeEdge(tsp, firstEdge);
+
+        auto neighborIt = findNeighbor(tsp, firstEdge);
         
 
-        while (neighborIt != mst.end())
+        while (neighborIt != tsp.end())
         {
             auto neighborEdge = *neighborIt;
 
@@ -250,14 +476,6 @@ namespace tree
             {
                 neighPoint = neighSegment.second;
             }
-
-            auto neighPointIt = std::find_if(extendedPoints.begin(), extendedPoints.end(), [&neighPoint](const auto& p)
-                {
-                    return p.x() == neighPoint.x() && p.y() == neighPoint.y();
-                });
-
-            const auto neighIndex = std::distance(extendedPoints.begin(), neighPointIt);
-
 
             if (verticalOverlap > horizontalOverlap)
             {
@@ -286,54 +504,34 @@ namespace tree
             {
                 extendedPoints.push_back(steiner);
 
-                mst = rectilinearMST(extendedPoints);
+                size_t newIndex = extendedPoints.size() - 1;
 
-                const size_t steinerIndex = extendedPoints.size() - 1;
+                active.insert(newIndex);
+                active.erase(firstEdge.u);
+                active.erase(firstEdge.v);
 
-                auto firstCandidate = *findEdge(mst, { firstEdge.u, steinerIndex });
-                auto secondCandidate = *findEdge(mst, { firstEdge.v, steinerIndex });
-                auto neighborCandidateIt = findEdge(mst, { steinerIndex, static_cast<size_t>(neighIndex) });
+                tsp = getTSP(extendedPoints, std::vector<size_t>(active.begin(), active.end()));
 
-                if (neighborCandidateIt == mst.end())
-                {
-                    break;
-                }
-                auto neighborCandidate = *neighborCandidateIt;
+                firstEdge = *findFirstBoundaryEdge(tsp);
+                
+                //removeEdge(tsp, firstEdge);
 
-                in::Segment firstCandidateSeg{ extendedPoints[firstCandidate.u],extendedPoints[firstCandidate.v] };
-                in::Segment secondCandidateSeg{ extendedPoints[secondCandidate.u],extendedPoints[secondCandidate.v] };
-                in::Segment neighborCandidateSeg{ extendedPoints[neighborCandidate.u],extendedPoints[neighborCandidate.v] };
-
-                const auto firstOverlap = getBestHorizontalOverlap(firstCandidateSeg, neighborCandidateSeg)
-                    + getBestVerticalOverlap(firstCandidateSeg, neighborCandidateSeg);
-                const auto secondOverlap = getBestHorizontalOverlap(secondCandidateSeg, neighborCandidateSeg)
-                    + getBestVerticalOverlap(secondCandidateSeg, neighborCandidateSeg);
-
-                if (firstOverlap == secondOverlap)
-                {
-                    removeEdge(mst, firstCandidate);
-                    removeEdge(mst, secondCandidate);
-                    firstEdge = neighborCandidate;
-                    neighborIt = findNeighbor(mst, firstEdge);
-                }
-                else if (firstOverlap > secondOverlap)
-                {
-                    removeEdge(mst, secondCandidate);
-                    firstEdge = firstCandidate;
-                    neighborIt = findNeighbor(mst, firstEdge);
-                }
-                else
-                {
-                    removeEdge(mst, firstCandidate);
-                    firstEdge = secondCandidate;
-                    neighborIt = findNeighbor(mst, firstEdge);
-                }
+                neighborIt = findNeighbor(tsp, firstEdge);
+                
             }
             else
             {
-                removeEdge(mst, firstEdge);
-                firstEdge = neighborEdge;
-                neighborIt = findNeighbor(mst, firstEdge);
+                const auto endpointVertex = findEndpointVertex(tsp, firstEdge);
+
+                active.erase(endpointVertex);
+
+                tsp = getTSP(extendedPoints, std::vector<size_t>(active.begin(), active.end()));
+
+                firstEdge = *findFirstBoundaryEdge(tsp);
+
+                //removeEdge(tsp, firstEdge);
+
+                neighborIt = findNeighbor(tsp, firstEdge);
             }
         }
 

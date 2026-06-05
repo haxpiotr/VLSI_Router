@@ -29,6 +29,7 @@ namespace tree
     };
 
     std::vector<ResultEdge> rectilinearMST(const std::vector<Point>& points);
+    std::vector<ResultEdge> getTSP(const std::vector<Point> &points);
     std::pair<std::vector<ResultEdge>, std::vector<Point>> rectinilearSteinerMST(const std::vector<Point>& points);
     std::vector<ResultSegment> getSegmentsFromMST(const std::vector<ResultEdge>& mst, const std::vector<Point>& points);
 }

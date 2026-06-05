@@ -115,8 +115,7 @@ namespace in
 
         compute::program program = compute::program::create_with_source(source, m_context);
 
-        const auto timeSeed = static_cast<unsigned int>(std::chrono::duration_cast<std::chrono::seconds>
-            (std::chrono::system_clock::now().time_since_epoch()).count());
+        const auto timeSeed = 2027;
 
         try
         {
@@ -224,41 +223,25 @@ namespace in
     {
         compute::copy(m_legTypes.begin(), m_legTypes.end(), m_oldLegTypes.begin(), m_queue);
 
-        const std::string source = krnl::mutateChosenIndexes();
+        const std::string source = krnl::mutateWithProbability();
 
         compute::program program = compute::program::create_with_source(source, m_context);
 
-        const auto timeSeed = static_cast<unsigned int>(std::chrono::duration_cast<std::chrono::seconds>
-            (std::chrono::system_clock::now().time_since_epoch()).count());
-
-        const auto randomIndexCountPerCandidate = static_cast<unsigned int>(m_mutationRate * m_netCount);
-        const auto randomsSize = static_cast<unsigned int>(randomIndexCountPerCandidate * m_populationSize);
-
-        compute::vector<float> floatHelper(randomsSize, m_context);
-        compute::vector<unsigned int> indexesToMutate(randomsSize, m_context);
+        const auto timeSeed = 2027;
 
         compute::uniform_real_distribution floatDist;
         compute::threefry_engine generator(m_queue, timeSeed);
-        floatDist.generate(floatHelper.begin(), floatHelper.end(), generator, m_queue);
-
-        const unsigned int endIndex = m_netCount - 1;
-        const unsigned int startIndex = 0;
-
-        boost::compute::function<unsigned int(float)> scaleToRange = compute::make_function_from_source<unsigned int(float)>(
-            "scaleToRange",
-            "uint scaleToRange(float x) {return (uint)(floor(x * (" + std::to_string(endIndex - startIndex + 1) + ")) +" + std::to_string(startIndex) + ");}");
-
-        compute::transform(floatHelper.begin(), floatHelper.end(), indexesToMutate.begin(), scaleToRange, m_queue);
+        floatDist.generate(m_randomValues.begin(), m_randomValues.end(), generator, m_queue);
 
         try
         {
             program.build();
 
-            compute::kernel kernel(program, "mutate_chosen_indexes");
+            compute::kernel kernel(program, "mutate_with_probability");
 
             kernel.set_arg(0, m_legTypes);
-            kernel.set_arg(1, indexesToMutate);
-            kernel.set_arg(2, randomIndexCountPerCandidate);
+            kernel.set_arg(1, m_randomValues);
+            kernel.set_arg(2, m_mutationRate);
             kernel.set_arg(3, m_netCount);
 
             m_queue.enqueue_1d_range_kernel(kernel, 0, m_populationSize, 0);
