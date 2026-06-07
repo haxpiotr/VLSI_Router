@@ -39,8 +39,7 @@ namespace in
 		{
 			#pragma omp parallel
 			{
-				thread_local std::random_device rd;
-				thread_local std::mt19937 gen(rd() ^ omp_get_thread_num());
+				thread_local std::mt19937 gen(2027 + omp_get_thread_num());
 				thread_local auto localGrid = globalBestGrid;
 				thread_local auto localSolutions = globalBestSolutions;
 				
@@ -89,6 +88,6 @@ namespace in
 			temperature *= m_coolingRate;	
 		}
 
-		return { globalBestSolutions.legTypes, globalBestPenalty };
+		return { globalBestSolutions.legTypes, globalBestGrid, globalBestPenalty };
 	}
 }

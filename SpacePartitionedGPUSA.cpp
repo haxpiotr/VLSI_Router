@@ -201,7 +201,7 @@ namespace in
                 resultDoglegs[i] = hostDoglegs[i] == 0 ? DoglegType::UPPER : DoglegType::LOWER;
             }
 
-            return { resultDoglegs, minPenalty };
+            return { resultDoglegs, {}, minPenalty };
 
         }
         catch (const compute::opencl_error& e)

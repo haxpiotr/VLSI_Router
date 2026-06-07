@@ -226,7 +226,6 @@ namespace in
 
             std::chrono::steady_clock::time_point startT = std::chrono::steady_clock::now();
             floatDist.generate(m_randomValues.begin(), m_randomValues.end(), *m_generator, m_queue);
-            std::cout << "Generate random values time: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startT).count() << " ms\n";
 
             kernel.set_arg(0, m_legTypes);
             kernel.set_arg(1, m_probabilities);
@@ -237,7 +236,6 @@ namespace in
 
             m_queue.finish();
 
-            std::cout<< "Create updated solutions time: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count() << " ms\n";
         }
         catch (const bc::opencl_error& e)
         {
@@ -252,7 +250,6 @@ namespace in
 
         for (unsigned int i = 0; i < m_generations; ++i)
         {
-            std::cout << "i: " << i << '\n';
             calculatePenalties();
             selectSolution();
             updateProbabilities();
@@ -269,7 +266,42 @@ namespace in
             result[i] = static_cast<DoglegType>(bestSolution[i]);
         }
 
-		return { result , *m_iter};
+        const auto penaltyIndex = static_cast<unsigned int>(std::distance(m_penalties.begin(), m_iter));
+        
+        const auto bestHorizontalGridIndexStart =
+          penaltyIndex * m_globalGrid.getCols() * m_globalGrid.getRows();
+        const auto bestHorizontalGridIndexEnd =
+          bestHorizontalGridIndexStart + m_globalGrid.getCols() * m_globalGrid.getRows();
+        const auto bestVerticalGridIndexStart =
+          penaltyIndex * m_globalGrid.getCols() * m_globalGrid.getRows()
+          + m_globalGrid.getCols() * m_globalGrid.getRows();
+        const auto bestVerticalGridIndexEnd =
+          bestVerticalGridIndexStart + m_globalGrid.getCols() * m_globalGrid.getRows();
+
+         std::vector<int> bestHorizontalGrid(m_horizontalGrid.size());
+         std::vector<int> bestVerticalGrid(m_verticalGrid.size());
+
+         bc::copy(m_horizontalGrid.begin() + bestHorizontalGridIndexStart,
+           m_horizontalGrid.begin() + bestHorizontalGridIndexEnd,
+           bestHorizontalGrid.begin(),
+           m_queue);
+
+         bc::copy(m_verticalGrid.begin() + bestVerticalGridIndexStart,
+           m_verticalGrid.begin() + bestVerticalGridIndexEnd,
+           bestVerticalGrid.begin(),
+           m_queue);
+
+         GlobalRoutingCells resultGrid;
+
+         for (size_t i = 0; i < bestHorizontalGrid.size(); ++i)
+         {
+             resultGrid.horizontalCells.push_back(GlobalRoutingCell{ bestHorizontalGrid[i], {{0, 0},{0,0 }} });
+             resultGrid.verticalCells.push_back(GlobalRoutingCell{ bestVerticalGrid[i], {{0, 0},{0,0 }} });
+         }
+
+         resultGrid.penalty = *m_iter;
+
+		return { result , resultGrid , *m_iter};
 	}
 
 }

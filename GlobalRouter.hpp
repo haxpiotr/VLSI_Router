@@ -110,6 +110,8 @@ private:
 	void initializeDoglegTypes();
 	void readAllDoglegNets();
 	void placeNonSubjectToOptimizationNetsOnGrid();
+
+	size_t countCellsExceedingCapacity(const GlobalRoutingCells &grid) const;
 };
 
 }

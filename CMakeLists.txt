@@ -63,7 +63,6 @@ set(LIB_HEADERS
     "RNDPerTStepSpacePartitionedGPUSA.hpp"
     "GeneticAlgorithm.hpp"
     "GeneticAlgorithmRandRatio.hpp"
-    "BPSO.hpp"
     "EDA.hpp"
 )
 
@@ -83,7 +82,6 @@ set(LIB_SOURCES
     "RNDPerTStepSpacePartitionedGPUSA.cpp"
     "GeneticAlgorithm.cpp"
     "GeneticAlgorithmRandRatio.cpp"
-    "BPSO.cpp"
     "EDA.cpp"
 )
 

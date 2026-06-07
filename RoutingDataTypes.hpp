@@ -33,6 +33,7 @@ namespace in
 	struct OptimizationSolution
 	{
 		std::vector<DoglegType> legTypes;
+		GlobalRoutingCells grid;
 		double penalty{ 0 };
 	};
 

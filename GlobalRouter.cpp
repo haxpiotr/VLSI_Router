@@ -4,6 +4,7 @@
 #include <execution>
 #include <algorithm>
 #include <random>
+#include <chrono>
 
 #include <omp.h>
 
@@ -263,11 +264,21 @@ namespace in
 			eps,
 			maxIterations);
 
-		std::cout << "Initialized simulated annealing on: " << m_optimizationData.netNames.size() << std::endl;
+		std::cout << "Initialized simulated annealing on: " << m_optimizationData.netNames.size() << " nets " << std::endl;
+
+		auto start = std::chrono::high_resolution_clock::now();
 
 		m_optimizationResult = m_solver->optimize();
 
+		std::cout << "Simulated annealing optimization took: "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(
+                       std::chrono::high_resolution_clock::now() - start)
+                       .count()
+                  << " ms\n";
+
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
+		std::cout << "Cells exceeding capacity: "
+			<< countCellsExceedingCapacity(m_optimizationResult.grid) << '\n';
 	}
 
 	void GlobalRouter::performSAPar(
@@ -289,9 +300,19 @@ namespace in
 
 		std::cout << "Initialized parallel simulated annealing on: " << m_optimizationData.netNames.size() << std::endl;
 
+		auto start = std::chrono::high_resolution_clock::now();
+
 		m_optimizationResult = m_solver->optimize();
 
+		std::cout << "Parallel simulated annealing optimization took: "
+				  << std::chrono::duration_cast<std::chrono::milliseconds>(
+					   std::chrono::high_resolution_clock::now() - start)
+					   .count()
+                  << " ms\n";
+
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
+		std::cout << "Cells exceeding capacity: "
+			<< countCellsExceedingCapacity(m_optimizationResult.grid) << '\n';
 	}
 
 	void GlobalRouter::performSAParSpacePartitioned(size_t maxIterations, float initialTemperature, float coolingRate, float eps, size_t spaces)
@@ -309,7 +330,15 @@ namespace in
 		std::cout << "Initialized space partitioned parallel simulated annealing on: " << m_optimizationData.netNames.size()
 			<< " solutions in " << spaces << " spaces." << std::endl;
 
+		auto start = std::chrono::high_resolution_clock::now();
+
 		m_optimizationResult = m_solver->optimize();
+
+		std::cout << "Space partitioned parallel simulated annealing optimization took: "
+				  << std::chrono::duration_cast<std::chrono::milliseconds>(
+					   std::chrono::high_resolution_clock::now() - start)
+					   .count()
+                  << " ms\n";
 
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
 	}
@@ -329,9 +358,18 @@ namespace in
 		std::cout << "Initialized space partitioned parallel GPU simulated annealing on: " << m_optimizationData.netNames.size()
 			<< " solutions in " << spaces << " spaces." << std::endl;
 
+		auto start = std::chrono::high_resolution_clock::now();
+
 		m_optimizationResult = m_solver->optimize();
 
+		std::cout << "Space partitioned parallel GPU simulated annealing optimization took: "
+			<< std::chrono::duration_cast<std::chrono::milliseconds>(
+				std::chrono::high_resolution_clock::now() - start)
+			.count() << " ms\n";
+
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
+		std::cout << "Cells exceeding capacity: "
+			<< countCellsExceedingCapacity(m_optimizationResult.grid) << '\n';
 	}
 
 	void GlobalRouter::performSAParSpacePartitionedOnGPUWithRandsPerIteration(size_t maxIterations, float initialTemperature, float coolingRate, float eps, size_t spaces)
@@ -349,31 +387,61 @@ namespace in
 		std::cout << "Initialized space partitioned parallel GPU simulated annealing on with rands generated per temperature iteration: " << m_optimizationData.netNames.size()
 			<< " solutions in " << spaces << " spaces." << std::endl;
 
+		auto start = std::chrono::high_resolution_clock::now();
+
 		m_optimizationResult = m_solver->optimize();
 
+		std::cout << "Space partitioned parallel GPU simulated annealing optimization with rands generated per temperature iteration took: "
+				  << std::chrono::duration_cast<std::chrono::milliseconds>(
+					   std::chrono::high_resolution_clock::now() - start)
+					   .count()
+                  << " ms\n";
+
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
+		std::cout << "Cells exceeding capacity: "
+			<< countCellsExceedingCapacity(m_optimizationResult.grid) << '\n';
 	}
 
 	void GlobalRouter::performGeneticAlgorithm(unsigned int generations, unsigned int populationSize, float mutationRate)
 	{
-		std::cout <<"Initialized GeneticAlgorithm\n";
+		std::cout <<"Initialized Genetic Algorithm with fixed crossover point\n";
 
 		m_solver = std::make_unique<GeneticAlgorithm>(m_globalGrid, m_grid, m_optimizationData, generations, populationSize, mutationRate);
 
+		auto start = std::chrono::high_resolution_clock::now();
+
 		m_optimizationResult = m_solver->optimize();
 
+		std::cout << "Genetic algorithm optimization took: "
+				  << std::chrono::duration_cast<std::chrono::milliseconds>(
+					   std::chrono::high_resolution_clock::now() - start)
+					   .count()
+                  << " ms\n";
+
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
+		std::cout << "Cells exceeding capacity: "
+			<< countCellsExceedingCapacity(m_optimizationResult.grid) << '\n';
 	}
 
 	void GlobalRouter::performGeneticAlgorithmRandRatio(unsigned int generations, unsigned int populationSize, float crossoverRate, float mutationRate)
 	{
 		m_solver = std::make_unique<GeneticAlgorithmRandRatio>(m_globalGrid, m_grid, m_optimizationData, generations, populationSize,crossoverRate, mutationRate);
 
-		std::cout << "Initialized GeneticAlgorithmon\n";
+		std::cout << "Initialized Genetic Algorithm with randomized crossover\n";
+
+		auto start = std::chrono::high_resolution_clock::now();
 
 		m_optimizationResult = m_solver->optimize();
 
+		std::cout << "Genetic algorithm with random ratio optimization took: "
+				  << std::chrono::duration_cast<std::chrono::milliseconds>(
+					   std::chrono::high_resolution_clock::now() - start)
+					   .count()
+                  << " ms\n";
+
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
+		std::cout << "Cells exceeding capacity: "
+			<< countCellsExceedingCapacity(m_optimizationResult.grid) << '\n';
 	}
 
 	void GlobalRouter::performEDA(unsigned int generations, unsigned int populationSize, float alpha, float limit)
@@ -382,8 +450,42 @@ namespace in
 
 		std::cout << "Initialized EDA\n";
 
+		auto start = std::chrono::high_resolution_clock::now();
+
 		m_optimizationResult = m_solver->optimize();
 
+		std::cout << "EDA optimization took: "
+				  << std::chrono::duration_cast<std::chrono::milliseconds>(
+					   std::chrono::high_resolution_clock::now() - start)
+					   .count()
+                  << " ms\n";
+
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
+        std::cout << "Cells exceeding capacity: "
+                  << countCellsExceedingCapacity(m_optimizationResult.grid) << '\n';
+	}
+
+	size_t GlobalRouter::countCellsExceedingCapacity(const GlobalRoutingCells& grid) const
+	{
+		const auto [hCap, vCap] = m_globalGrid.getCellCapacity();
+
+		size_t count = 0;
+		for (const auto& cell : grid.horizontalCells)
+		{
+			if (cell.congestion > hCap)
+			{
+				++count;
+			}
+		}
+
+		for (const auto& cell : grid.verticalCells)
+		{
+			if (cell.congestion > vCap)
+			{
+				++count;
+			}
+		}
+
+		return count;
 	}
 }

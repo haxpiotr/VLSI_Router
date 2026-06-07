@@ -295,6 +295,29 @@ namespace in
             result[i] = static_cast<DoglegType>(optimizedSolution[i]);
         }
 
-        return { result , penalties[0] };
+        const auto bestHorizontalGridIndexStart =
+          bestIndexes[0] * m_globalRoutingGrid.getCols() * m_globalRoutingGrid.getRows();
+        const auto bestVerticalGridIndexStart =
+          bestIndexes[0] * m_globalRoutingGrid.getCols() * m_globalRoutingGrid.getRows();
+         std::vector<int> horizontalGrid(m_horizontalGrid.size());
+         std::vector<int> verticalGrid(m_verticalGrid.size());
+         compute::copy(m_horizontalGrid.begin() + bestHorizontalGridIndexStart,
+             m_horizontalGrid.begin() + bestHorizontalGridIndexStart + m_globalRoutingGrid.getCols() * m_globalRoutingGrid.getRows(),
+             horizontalGrid.begin(), m_queue);
+         compute::copy(m_verticalGrid.begin() + bestVerticalGridIndexStart,
+           m_verticalGrid.begin() + bestVerticalGridIndexStart
+             + m_globalRoutingGrid.getCols() * m_globalRoutingGrid.getRows(),
+           verticalGrid.begin(),
+           m_queue);
+
+         GlobalRoutingCells bestGrid;
+         for (size_t i = 0; i < horizontalGrid.size(); ++i)
+         {
+             bestGrid.horizontalCells.push_back({ horizontalGrid[i], box_int{ { 0, 0 },{ 0, 0 }} });
+             bestGrid.verticalCells.push_back({ verticalGrid[i], box_int{ { 0, 0 }, { 0, 0 } } });
+         }
+         bestGrid.penalty = penalties[0];
+
+        return { result ,bestGrid, penalties[0] };
     }
 }

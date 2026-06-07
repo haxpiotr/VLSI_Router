@@ -100,6 +100,8 @@ namespace in
 		const auto minPenaltyIt = std::min_element(penalties.begin(), penalties.end());
 		const auto resultLegTypesIndex = std::distance(penalties.begin(), minPenaltyIt);
 
-		return { m_spaces[resultLegTypesIndex].legTypes, *minPenaltyIt };
+		addSolutions(m_startingGrid, m_spaces[resultLegTypesIndex]);
+
+		return { m_spaces[resultLegTypesIndex].legTypes, m_startingGrid, *minPenaltyIt };
 	}
 }

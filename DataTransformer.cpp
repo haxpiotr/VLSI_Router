@@ -62,7 +62,7 @@ namespace in
 	{
 		std::vector<std::vector<TreeNet>> localNetlists(omp_get_max_threads());
 
-//#pragma omp parallel for 
+#pragma omp parallel for 
 		for (size_t i = 0; i < m_design.nets.size(); ++i)
 		{
 			std::vector<in::point_int> points;
@@ -109,7 +109,7 @@ namespace in
 	{
 		std::vector<std::vector<SteinerTreeNet>> localNets(omp_get_max_threads());
 
-//#pragma omp parallel for 
+#pragma omp parallel for 
 		for (size_t i = 0; i < m_design.nets.size(); ++i)
 		{
 			std::vector<in::point_int> points;

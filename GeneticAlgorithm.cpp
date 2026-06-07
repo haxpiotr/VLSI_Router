@@ -266,8 +266,6 @@ namespace in
             findBestSolutions();
             crossover();
             mutate();
-
-            std::cout << "Generation " << i << "\n";
         }
 
         std::vector<unsigned int> bestIndexes(m_bestIndexes.size());
@@ -288,6 +286,44 @@ namespace in
             result[i] = static_cast<DoglegType>(optimizedSolution[i]);
         }
 
-		return { result , penalties[0]};
+        const auto bestHorizontalGridIndexBegin =
+          bestIndexes[0] * m_globalRoutingGrid.getCols() * m_globalRoutingGrid.getRows();
+        const auto bestHorizontalGridIndexEnd =
+          bestHorizontalGridIndexBegin
+          + m_globalRoutingGrid.getCols() * m_globalRoutingGrid.getRows();
+
+         std::vector<int> bestHorizontalGrid(
+          m_globalRoutingGrid.getCols() * m_globalRoutingGrid.getRows());
+
+         compute::copy(m_horizontalGrid.begin() + bestHorizontalGridIndexBegin,
+           m_horizontalGrid.begin() + bestHorizontalGridIndexEnd,
+           bestHorizontalGrid.begin(),
+           m_queue);
+
+         const auto bestVerticalGridIndexBegin = 
+           bestIndexes[0] * m_globalRoutingGrid.getCols() * m_globalRoutingGrid.getRows()
+           + m_globalRoutingGrid.getCols() * m_globalRoutingGrid.getRows();
+         const auto bestVerticalGridIndexEnd = 
+           bestVerticalGridIndexBegin
+           + m_globalRoutingGrid.getCols() * m_globalRoutingGrid.getRows();
+
+         std::vector<int> bestVerticalGrid(
+           m_globalRoutingGrid.getCols() * m_globalRoutingGrid.getRows());
+         compute::copy(m_verticalGrid.begin() + bestVerticalGridIndexBegin, 
+           m_verticalGrid.begin() + bestVerticalGridIndexEnd,
+           bestVerticalGrid.begin(),
+           m_queue);
+
+         GlobalRoutingCells bestGrid;
+
+         for (size_t i = 0; i < bestHorizontalGrid.size(); ++i)
+         {
+             bestGrid.horizontalCells.push_back({ bestHorizontalGrid[i], { {0,0}, {0,0} } });
+             bestGrid.verticalCells.push_back({ bestVerticalGrid[i], { { 0, 0 }, { 0, 0 } } });
+         }
+
+         bestGrid.penalty = penalties[0];
+
+		return { result ,bestGrid, penalties[0]};
 	}
 }

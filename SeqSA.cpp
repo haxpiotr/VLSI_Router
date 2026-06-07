@@ -103,8 +103,7 @@ namespace in
 
     OptimizationSolution SeqSA::optimize()
     {
-        static std::random_device rd;
-        static std::mt19937 gen(rd());
+        static std::mt19937 gen(2027);
         float temperature = m_initialTemperature;
         auto currentSolutions = m_initialSolutions;
         auto bestSolution = currentSolutions;
@@ -112,6 +111,8 @@ namespace in
         addSolutions(m_startingGrid, m_initialSolutions);
 
         float currentPenalty = m_startingGrid.penalty;
+
+        std::cout << "Initial Penalty: " << currentPenalty << std::endl;
 
         while(temperature > m_eps)
         {
@@ -143,12 +144,10 @@ namespace in
                 }
             }
 
-            std::cout << "Temperature: " << temperature << ", Current Penalty: " << currentPenalty << std::endl;
-
             temperature *= m_coolingRate;
         }
 
-        return { currentSolutions.legTypes, currentPenalty };
+        return { currentSolutions.legTypes, m_startingGrid, currentPenalty };
     }
 
 	float SeqSA::getCurrentPenalty() const

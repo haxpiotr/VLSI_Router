@@ -112,12 +112,45 @@ namespace in
 
             compute::copy(m_legTypes.begin() + deviceDoglegBegin, m_legTypes.begin() + deviceDoglegEndIndex, hostDoglegs.begin(), m_queue);
 
+            const auto bestHorizontalGridBegin = std::distance(m_penalties.begin(), minPenaltyIter)
+                                                 * m_globalGrid.getCols() * m_globalGrid.getRows();
+            const auto bestHorizontalGridEnd =
+              bestHorizontalGridBegin + m_globalGrid.getCols() * m_globalGrid.getRows();
+
+            std::vector<int> hostHorizontalGrid(m_globalGrid.getCols() * m_globalGrid.getRows());
+            compute::copy(m_horizontalGrid.begin() + bestHorizontalGridBegin,
+              m_horizontalGrid.begin() + bestHorizontalGridEnd,
+              hostHorizontalGrid.begin(),
+              m_queue);
+
+            const auto bestVerticalGridBegin = std::distance(m_penalties.begin(), minPenaltyIter)
+                                               * m_globalGrid.getCols() * m_globalGrid.getRows()
+                                               + m_globalGrid.getCols() * m_globalGrid.getRows();
+            const auto bestVerticalGridEnd =
+              bestVerticalGridBegin + m_globalGrid.getCols() * m_globalGrid.getRows();
+
+            std::vector<int> hostVerticalGrid(m_globalGrid.getCols() * m_globalGrid.getRows());
+            compute::copy(m_verticalGrid.begin() + bestVerticalGridBegin,
+              m_verticalGrid.begin() + bestVerticalGridEnd,
+              hostVerticalGrid.begin(),
+              m_queue);
+
+            GlobalRoutingCells resultGrid;
+
+            for (size_t i = 0; i < hostHorizontalGrid.size(); ++i)
+            {
+                resultGrid.horizontalCells.push_back(GlobalRoutingCell{ hostHorizontalGrid[i], {{0, 0},{0,0 }} });
+                resultGrid.verticalCells.push_back(GlobalRoutingCell{ hostVerticalGrid[i], {{0, 0},{0,0 }} });
+            }
+
+            resultGrid.penalty = minPenalty;
+
             for (size_t i = 0; i < resultDoglegs.size(); ++i)
             {
                 resultDoglegs[i] = hostDoglegs[i] == 0 ? DoglegType::UPPER : DoglegType::LOWER;
             }
 
-            return { resultDoglegs, minPenalty };
+            return { resultDoglegs, resultGrid, minPenalty };
 
         }
         catch (const compute::opencl_error& e)
