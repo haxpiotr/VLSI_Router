@@ -599,6 +599,9 @@ namespace in
 			}
 		}
 
+		std::cout << "Cell horizontal capacity: " << horizontal << std::endl;
+        std::cout << "Cell vertical capacity: " << vertical << std::endl;
+
 		m_cellHorizontalCapacity = horizontal;
 		m_cellVerticalCapacity = vertical;
 	}

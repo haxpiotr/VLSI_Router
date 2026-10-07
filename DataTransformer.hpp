@@ -55,6 +55,7 @@ namespace in
 		[[nodiscard]] std::vector<int> getNeighbours(int i) const;
 		[[nodiscard]] int getCols() const;
 		[[nodiscard]] int getRows() const;
+
 	private:
 		void calculateCellCapacity();
 		int m_cols{ 0 };

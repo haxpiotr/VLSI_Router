@@ -273,8 +273,6 @@ namespace in
             findBestSolutions();
             crossover();
             mutate();
-
-            std::cout << "Generation " << i << "\n";
         }
 
         std::vector<unsigned int> bestIndexes(m_bestIndexes.size());

@@ -12,6 +12,7 @@
 #include "GeneticAlgorithm.hpp"
 #include "GeneticAlgorithmRandRatio.hpp"
 #include "EDA.hpp"
+#include "ExportGrid.hpp"
 
 namespace in
 {
@@ -268,6 +269,13 @@ namespace in
 
 		auto start = std::chrono::high_resolution_clock::now();
 
+		in::exportGridToPPM("initial_grid_no_placement.ppm",
+			m_grid,
+			m_globalGrid.getCellCapacity().first + m_globalGrid.getCellCapacity().second,
+			m_globalGrid.getCols(),
+			m_globalGrid.getRows(),
+			10);
+
 		m_optimizationResult = m_solver->optimize();
 
 		std::cout << "Simulated annealing optimization took: "
@@ -279,6 +287,13 @@ namespace in
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
 		std::cout << "Cells exceeding capacity: "
 			<< countCellsExceedingCapacity(m_optimizationResult.grid) << '\n';
+
+		in::exportGridToPPM("result_grid_performSA.ppm",
+			m_optimizationResult.grid,
+			m_globalGrid.getCellCapacity().first + m_globalGrid.getCellCapacity().second,
+			m_globalGrid.getCols(),
+			m_globalGrid.getRows(),
+			10);
 	}
 
 	void GlobalRouter::performSAPar(
@@ -304,6 +319,13 @@ namespace in
 
 		m_optimizationResult = m_solver->optimize();
 
+		in::exportGridToPPM("initial_grid_no_placement.ppm",
+			m_grid,
+			m_globalGrid.getCellCapacity().first + m_globalGrid.getCellCapacity().second,
+			m_globalGrid.getCols(),
+			m_globalGrid.getRows(),
+			10);
+
 		std::cout << "Parallel simulated annealing optimization took: "
 				  << std::chrono::duration_cast<std::chrono::milliseconds>(
 					   std::chrono::high_resolution_clock::now() - start)
@@ -313,6 +335,13 @@ namespace in
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
 		std::cout << "Cells exceeding capacity: "
 			<< countCellsExceedingCapacity(m_optimizationResult.grid) << '\n';
+
+		in::exportGridToPPM("result_grid_performSAPar.ppm",
+			m_optimizationResult.grid,
+			m_globalGrid.getCellCapacity().first + m_globalGrid.getCellCapacity().second,
+			m_globalGrid.getCols(),
+			m_globalGrid.getRows(),
+			10);
 	}
 
 	void GlobalRouter::performSAParSpacePartitioned(size_t maxIterations, float initialTemperature, float coolingRate, float eps, size_t spaces)
@@ -341,6 +370,13 @@ namespace in
                   << " ms\n";
 
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
+
+		in::exportGridToPPM("result_grid_performSAParSpacePartitioned.ppm",
+			m_optimizationResult.grid,
+			m_globalGrid.getCellCapacity().first + m_globalGrid.getCellCapacity().second,
+			m_globalGrid.getCols(),
+			m_globalGrid.getRows(),
+			10);
 	}
 
 	void GlobalRouter::performSAParSpacePartitionedOnGPU(size_t maxIterations, float initialTemperature, float coolingRate, float eps, size_t spaces)
@@ -370,6 +406,12 @@ namespace in
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
 		std::cout << "Cells exceeding capacity: "
 			<< countCellsExceedingCapacity(m_optimizationResult.grid) << '\n';
+		in::exportGridToPPM("result_grid_performSAParSpacePartitionedOnGPU.ppm",
+			m_optimizationResult.grid,
+			m_globalGrid.getCellCapacity().first + m_globalGrid.getCellCapacity().second,
+			m_globalGrid.getCols(),
+			m_globalGrid.getRows(),
+			10);
 	}
 
 	void GlobalRouter::performSAParSpacePartitionedOnGPUWithRandsPerIteration(size_t maxIterations, float initialTemperature, float coolingRate, float eps, size_t spaces)
@@ -400,6 +442,12 @@ namespace in
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
 		std::cout << "Cells exceeding capacity: "
 			<< countCellsExceedingCapacity(m_optimizationResult.grid) << '\n';
+		in::exportGridToPPM("result_grid_performSAParSpacePartitionedOnGPUWithRandsPerIteration.ppm",
+			m_optimizationResult.grid,
+			m_globalGrid.getCellCapacity().first + m_globalGrid.getCellCapacity().second,
+			m_globalGrid.getCols(),
+			m_globalGrid.getRows(),
+			10);
 	}
 
 	void GlobalRouter::performGeneticAlgorithm(unsigned int generations, unsigned int populationSize, float mutationRate)
@@ -421,6 +469,12 @@ namespace in
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
 		std::cout << "Cells exceeding capacity: "
 			<< countCellsExceedingCapacity(m_optimizationResult.grid) << '\n';
+		in::exportGridToPPM("result_grid_performGeneticAlgorithm.ppm",
+			m_optimizationResult.grid,
+			m_globalGrid.getCellCapacity().first + m_globalGrid.getCellCapacity().second,
+			m_globalGrid.getCols(),
+			m_globalGrid.getRows(),
+			10);
 	}
 
 	void GlobalRouter::performGeneticAlgorithmRandRatio(unsigned int generations, unsigned int populationSize, float crossoverRate, float mutationRate)
@@ -442,6 +496,14 @@ namespace in
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
 		std::cout << "Cells exceeding capacity: "
 			<< countCellsExceedingCapacity(m_optimizationResult.grid) << '\n';
+
+		in::exportGridToPPM("result_grid_performGeneticAlgorithmRandRatio.ppm",
+			m_optimizationResult.grid,
+			m_globalGrid.getCellCapacity().first + m_globalGrid.getCellCapacity().second,
+			m_globalGrid.getCols(),
+			m_globalGrid.getRows(),
+			10);
+
 	}
 
 	void GlobalRouter::performEDA(unsigned int generations, unsigned int populationSize, float alpha, float limit)
@@ -463,6 +525,12 @@ namespace in
 		std::cout << "Optimized penalty: " << m_optimizationResult.penalty << '\n';
         std::cout << "Cells exceeding capacity: "
                   << countCellsExceedingCapacity(m_optimizationResult.grid) << '\n';
+		in::exportGridToPPM("result_grid_performEDA.ppm",
+			m_optimizationResult.grid,
+			m_globalGrid.getCellCapacity().first + m_globalGrid.getCellCapacity().second,
+			m_globalGrid.getCols(),
+			m_globalGrid.getRows(),
+			10);
 	}
 
 	size_t GlobalRouter::countCellsExceedingCapacity(const GlobalRoutingCells& grid) const

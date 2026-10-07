@@ -449,11 +449,8 @@ namespace tree
 
         auto firstEdge = *findFirstBoundaryEdge(tsp);
 
-        //removeEdge(tsp, firstEdge);
-
         auto neighborIt = findNeighbor(tsp, firstEdge);
         
-
         while (neighborIt != tsp.end())
         {
             auto neighborEdge = *neighborIt;
@@ -514,8 +511,6 @@ namespace tree
 
                 firstEdge = *findFirstBoundaryEdge(tsp);
                 
-                //removeEdge(tsp, firstEdge);
-
                 neighborIt = findNeighbor(tsp, firstEdge);
                 
             }
@@ -528,8 +523,6 @@ namespace tree
                 tsp = getTSP(extendedPoints, std::vector<size_t>(active.begin(), active.end()));
 
                 firstEdge = *findFirstBoundaryEdge(tsp);
-
-                //removeEdge(tsp, firstEdge);
 
                 neighborIt = findNeighbor(tsp, firstEdge);
             }

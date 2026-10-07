@@ -174,8 +174,6 @@ namespace in
             kernel.set_arg(8, rows);
 
             m_queue.enqueue_1d_range_kernel(kernel, 0, m_populationSize, 0);
-
-            m_queue.finish();
         }
         catch (const bc::opencl_error& e)
         {
@@ -186,18 +184,14 @@ namespace in
 
     void EDA::selectSolution()
     {
-        std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
         m_iter = bc::min_element(m_penalties.begin(), m_penalties.end(), m_queue);
         const auto penaltyIndex = static_cast<unsigned int>(std::distance(m_penalties.begin(), m_iter));
         const auto solutionIndex = penaltyIndex * m_netCount;
         bc::copy(m_legTypes.begin() + solutionIndex, m_legTypes.begin() + solutionIndex + m_netCount, m_bestSolution.begin(), m_queue);
-        std::cout << "Selection time: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count() << " ms\n";
-
     }
 
     void EDA::updateProbabilities()
     {
-        std::chrono::steady_clock::time_point startT = std::chrono::steady_clock::now();
         const float oneMinusAlpha = 1.0f - m_alpha;
         const float minP = m_limit;
         const float maxP = 1.0f - m_limit;
@@ -207,13 +201,10 @@ namespace in
 
         bc::transform(start, end, m_probabilities.begin(), bc::lambda::clamp(bc::lambda::get<0>(bc::lambda::_1)*oneMinusAlpha 
             + bc::lambda::get<1>(bc::lambda::_1)*m_alpha, minP, maxP), m_queue);
-
-        std::cout << "Update probabilities time: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startT).count() << " ms\n";
     }
 
     void EDA::createUpdatedSolutions()
     {
-        std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
         const std::string source = krnl::createUpdatedSolutions();
 
         bc::program program = bc::program::create_with_source(source, m_context);
@@ -223,8 +214,6 @@ namespace in
             program.build();
 
             bc::kernel kernel(program, "create_updated_solutions");
-
-            std::chrono::steady_clock::time_point startT = std::chrono::steady_clock::now();
             floatDist.generate(m_randomValues.begin(), m_randomValues.end(), *m_generator, m_queue);
 
             kernel.set_arg(0, m_legTypes);
@@ -233,8 +222,6 @@ namespace in
             kernel.set_arg(3, m_netCount);
 
             m_queue.enqueue_1d_range_kernel(kernel, 0, m_populationSize, 0);
-
-            m_queue.finish();
 
         }
         catch (const bc::opencl_error& e)
